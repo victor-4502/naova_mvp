@@ -1,0 +1,206 @@
+// Naova SaaS - Prisma Schema
+// PostgreSQL database schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Roles enum
+enum UserRole {
+  admin
+  client
+}
+
+enum RequirementStatus {
+  draft
+  pending
+  in_tender
+  completed
+  cancelled
+}
+
+enum TenderStatus {
+  draft
+  active
+  closed
+  cancelled
+}
+
+// User table - authentication and basic info
+model User {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  role         UserRole       @default(client)
+  company      String?
+  phone        String?
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  // Relations
+  clientProfile    ClientProfile?
+  requirements     Requirement[]
+  auditLogs        AuditLog[]
+  createdTenders   Tender[]       @relation("TenderCreator")
+  
+  @@index([email])
+  @@index([role])
+}
+
+// Client specific profile
+model ClientProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billingPlan   String    @default("trial") // trial, basic, enterprise
+  trialEndsAt   DateTime?
+  metadata      Json?     // Additional flexible data
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([billingPlan])
+}
+
+// Purchase requirements from clients
+model Requirement {
+  id          String             @id @default(cuid())
+  clientId    String
+  client      User               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  category    String             // electronics, supplies, services, etc.
+  description String             @db.Text
+  quantity    Float
+  unit        String             // pcs, kg, m2, etc.
+  fileUrl     String?            // Attachment URL
+  status      RequirementStatus  @default(pending)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  
+  // Relations
+  tender      Tender?
+  
+  @@index([clientId])
+  @@index([status])
+  @@index([category])
+}
+
+// Tender/Licitación
+model Tender {
+  id            String       @id @default(cuid())
+  requirementId String       @unique
+  requirement   Requirement  @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  title         String
+  status        TenderStatus @default(draft)
+  startAt       DateTime?
+  endAt         DateTime?
+  createdById   String
+  createdBy     User         @relation("TenderCreator", fields: [createdById], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Relations
+  offers        Offer[]
+  
+  @@index([status])
+  @@index([createdById])
+}
+
+// Provider/Supplier
+model Provider {
+  id        String   @id @default(cuid())
+  name      String
+  category  String   // Category specialization
+  contact   String?
+  email     String?
+  phone     String?
+  rating    Float    @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  offers           Offer[]
+  purchaseHistory  PurchaseHistory[]
+  
+  @@index([category])
+  @@index([active])
+}
+
+// Offers from providers for tenders
+model Offer {
+  id           String   @id @default(cuid())
+  tenderId     String
+  tender       Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id])
+  price        Float
+  quantity     Float
+  deliveryDays Int
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([tenderId])
+  @@index([providerId])
+}
+
+// Historical purchase data for analytics
+model PurchaseHistory {
+  id         String   @id @default(cuid())
+  clientId   String
+  category   String
+  item       String
+  quantity   Float
+  unit       String
+  unitPrice  Float
+  totalPrice Float
+  providerId String?
+  provider   Provider? @relation(fields: [providerId], references: [id])
+  date       DateTime
+  createdAt  DateTime @default(now())
+  
+  @@index([clientId])
+  @@index([category])
+  @@index([date])
+}
+
+// Contact leads from pricing page
+model ContactLead {
+  id           String   @id @default(cuid())
+  name         String
+  company      String?
+  email        String
+  phone        String?
+  planInterest String?  // trial, basic, enterprise
+  message      String?  @db.Text
+  status       String   @default("new") // new, contacted, converted, lost
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Audit log for security and tracking
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // login, create_client, create_requirement, etc.
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+}
+

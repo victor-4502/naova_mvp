@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Importar tipografías personalizadas */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Definir tipografías de marca */
+/* Using system fonts for now - replace with actual font files later */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: linear-gradient(135deg, #f8f7ff 0%, #f0f0ff 100%);
+    min-height: 100vh;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-8 py-4 rounded-lg font-semibold shadow-soft hover:shadow-medium transition-all duration-300 hover:bg-purple-700;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-primary border-2 border-primary px-8 py-4 rounded-lg font-semibold shadow-soft hover:shadow-medium transition-all duration-300 hover:bg-primary hover:text-white;
+  }
+  
+  .section-padding {
+    @apply py-20 px-4 sm:px-6 lg:px-8;
+  }
+  
+  .container-max {
+    @apply max-w-7xl mx-auto;
+  }
+}
