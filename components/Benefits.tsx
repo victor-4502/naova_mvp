@@ -70,7 +70,7 @@ const Benefits = () => {
           <div>
             <motion.p
               variants={itemVariants}
-              className="text-2xl md:text-3xl font-semibold text-primary mb-6 leading-relaxed text-left"
+              className="text-2xl md:text-3xl font-semibold text-primary mb-6 leading-relaxed text-center"
             >
               Recibe reportes automáticos con tus históricos de compra, métricas clave y oportunidades de ahorro.
             </motion.p>
