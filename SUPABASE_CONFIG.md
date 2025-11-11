@@ -42,7 +42,7 @@ SMTP_FROM="Naova <noreply@naova.com>"
 # CONTACT & SALES
 # ============================================
 SALES_EMAIL="ventas@naova.com"
-NEXT_PUBLIC_WHATSAPP="+525512345678"
+NEXT_PUBLIC_WHATSAPP="+523316083075"
 
 # ============================================
 # APP CONFIG

@@ -70,7 +70,7 @@ const FinalCTA = () => {
             <motion.a
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              href="https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20una%20prueba%20gratis"
+              href="https://wa.me/523316083075?text=Hola%20Naova%20quiero%20una%20prueba%20gratis"
               target="_blank"
               rel="noreferrer"
               className="bg-secondary text-white px-8 py-4 rounded-lg font-semibold shadow-soft hover:shadow-medium transition-all duration-300 flex items-center gap-2 text-lg"
@@ -82,7 +82,7 @@ const FinalCTA = () => {
             <motion.a
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              href="https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20una%20prueba%20gratis"
+              href="https://wa.me/523316083075?text=Hola%20Naova%20quiero%20una%20prueba%20gratis"
               target="_blank"
               rel="noreferrer"
               className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 px-8 py-4 rounded-lg font-semibold hover:bg-white/20 transition-all duration-300 text-lg"

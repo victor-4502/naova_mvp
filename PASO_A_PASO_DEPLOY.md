@@ -128,7 +128,7 @@ ventas@naova.com
 
 **6. NEXT_PUBLIC_WHATSAPP**
 ```
-+525512345678
++523316083075
 ```
 
 ### 4.2 Marcar para Todos los Entornos

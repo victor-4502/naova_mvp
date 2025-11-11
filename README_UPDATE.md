@@ -17,10 +17,10 @@ Este documento resume los ajustes realizados en la landing page basados en la pr
 
 ## Enlaces de contacto utilizados
 
-- **WhatsApp – sección de planes**: `https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20conocer%20sus%20planes`
-- **WhatsApp – botón flotante**: `https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20una%20cotización`
+- **WhatsApp – sección de planes**: `https://wa.me/523316083075?text=Hola%20Naova%20quiero%20conocer%20sus%20planes`
+- **WhatsApp – botón flotante**: `https://wa.me/523316083075?text=Hola%20Naova%20quiero%20una%20cotización`
 - **Correo – sección de planes**: `mailto:contacto@naova.com.mx?subject=Solicitud%20de%20cotización%20Naova`
-- **WhatsApp – CTA final**: `https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20una%20prueba%20gratis`
+- **WhatsApp – CTA final**: `https://wa.me/523316083075?text=Hola%20Naova%20quiero%20una%20prueba%20gratis`
 - **Correo – CTA final**: `mailto:contacto@naova.com.mx?subject=Quiero%20hablar%20con%20un%20experto%20de%20Naova`
 
 ## Cómo actualizar el número o correo

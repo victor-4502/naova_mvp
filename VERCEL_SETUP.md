@@ -78,7 +78,7 @@ ventas@naova.com
 
 **6. NEXT_PUBLIC_WHATSAPP**
 ```
-+525512345678
++523316083075
 ```
 
 **7. SMTP_HOST** (si vas a usar emails)

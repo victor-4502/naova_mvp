@@ -28,7 +28,7 @@ const PlansCTA = () => {
             <motion.a
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              href="https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20conocer%20sus%20planes"
+              href="https://wa.me/523316083075?text=Hola%20Naova%20quiero%20conocer%20sus%20planes"
               target="_blank"
               rel="noreferrer"
               className="btn-primary flex items-center justify-center gap-2"

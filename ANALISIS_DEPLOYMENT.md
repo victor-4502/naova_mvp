@@ -127,7 +127,7 @@ NEXT_PUBLIC_APP_URL=https://tu-app.vercel.app
 
 # Opcionales
 SALES_EMAIL=ventas@naova.com
-NEXT_PUBLIC_WHATSAPP=+525512345678
+NEXT_PUBLIC_WHATSAPP=+523316083075
 ```
 
 ### Scripts de Build

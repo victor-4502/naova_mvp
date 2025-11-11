@@ -56,7 +56,7 @@ SMTP_FROM="Naova <noreply@naova.com>"
 
 # Sales
 SALES_EMAIL="ventas@naova.com"
-NEXT_PUBLIC_WHATSAPP="+525512345678"
+NEXT_PUBLIC_WHATSAPP="+523316083075"
 
 # App URL
 NEXT_PUBLIC_APP_URL="http://localhost:3000"

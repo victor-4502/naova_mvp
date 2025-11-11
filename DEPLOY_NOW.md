@@ -64,7 +64,7 @@ Tu aplicación está lista para desplegarse **incluso sin datos**. El sistema cr
    
    # Contacto (opcional)
    SALES_EMAIL=ventas@naova.com
-   NEXT_PUBLIC_WHATSAPP=+525512345678
+   NEXT_PUBLIC_WHATSAPP=+523316083075
    ```
 
 4. **Generar JWT_SECRET seguro:**

@@ -117,7 +117,7 @@ SMTP_FROM=Naova <noreply@naova.com>
 
 # Contacto
 SALES_EMAIL=ventas@naova.com
-NEXT_PUBLIC_WHATSAPP=+525512345678
+NEXT_PUBLIC_WHATSAPP=+523316083075
 ```
 
 #### Generar JWT_SECRET seguro:

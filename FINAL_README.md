@@ -69,7 +69,7 @@ SMTP_USER="tu-email@gmail.com"
 SMTP_PASS="tu-contraseña"
 SMTP_FROM="Naova <noreply@naova.com>"
 SALES_EMAIL="ventas@naova.com"
-NEXT_PUBLIC_WHATSAPP="+525512345678"
+NEXT_PUBLIC_WHATSAPP="+523316083075"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
