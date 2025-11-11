@@ -143,16 +143,10 @@ const About = () => {
                   ))}
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-200">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">5+</div>
-                    <div className="text-sm text-gray-800">Años de experiencia</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">15+</div>
-                    <div className="text-sm text-gray-800">Expertos en equipo</div>
-                  </div>
+                <div className="pt-6 border-t border-gray-200 text-left">
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    Construimos Naova junto a especialistas en compras, logística y tecnología para ofrecerte una solución hecha a la medida de los retos industriales.
+                  </p>
                 </div>
               </div>
             </div>

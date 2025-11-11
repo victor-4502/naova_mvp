@@ -4,6 +4,7 @@ import ValueProps from '@/components/ValueProps'
 import ProblemSection from '@/components/ProblemSection'
 import HowItWorks from '@/components/HowItWorks'
 import Benefits from '@/components/Benefits'
+import MissionVision from '@/components/MissionVision'
 import PlansCTA from '@/components/PlansCTA'
 import Testimonials from '@/components/Testimonials'
 import About from '@/components/About'
@@ -19,6 +20,7 @@ export default function Home() {
       <ValueProps />
       <HowItWorks />
       <Benefits />
+      <MissionVision />
       <PlansCTA />
       <Testimonials />
       <About />

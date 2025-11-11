@@ -8,7 +8,11 @@ Este documento resume los ajustes realizados en la landing page basados en la pr
 - `components/ProblemSection.tsx` (nuevo): Describe los principales retos de las compras indirectas y se muestra justo después del `Hero`.
 - `components/HowItWorks.tsx`: Se añadió el subtítulo narrativo “Así funciona Naova en la práctica” con los cuatro pasos resumidos.
 - `components/Benefits.tsx`: Incluye un texto destacado sobre reportes automáticos y un ejemplo de uso para áreas operativas.
-- `components/About.tsx`: Agrega el lema “No cambiamos tu proceso; lo hacemos más fácil y eficiente.”
+- `components/MissionVision.tsx` (nuevo): Presenta misión, visión y valores con mensajes claros.
+- `components/Hero.tsx`: Sustituye los contadores ficticios por un mensaje de confianza más neutral.
+- `components/About.tsx`: Mantiene el lema destacado y elimina cifras ficticias.
+- `components/Testimonials.tsx`: Se convirtió en una sección de Preguntas Frecuentes.
+- `components/FinalCTA.tsx`: Actualiza los CTAs para abrir WhatsApp y correo directamente, con un mensaje final sin métricas ficticias.
 - `components/WhatsAppButton.tsx` (nuevo) y `app/layout.tsx`: Implementan el botón flotante de WhatsApp visible en toda la web.
 
 ## Enlaces de contacto utilizados
@@ -16,6 +20,8 @@ Este documento resume los ajustes realizados en la landing page basados en la pr
 - **WhatsApp – sección de planes**: `https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20conocer%20sus%20planes`
 - **WhatsApp – botón flotante**: `https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20una%20cotización`
 - **Correo – sección de planes**: `mailto:contacto@naova.com.mx?subject=Solicitud%20de%20cotización%20Naova`
+- **WhatsApp – CTA final**: `https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20una%20prueba%20gratis`
+- **Correo – CTA final**: `mailto:contacto@naova.com.mx?subject=Quiero%20hablar%20con%20un%20experto%20de%20Naova`
 
 ## Cómo actualizar el número o correo
 
@@ -23,10 +29,13 @@ Este documento resume los ajustes realizados en la landing page basados en la pr
    - Modifica el atributo `href` del primer `<motion.a>` para actualizar el enlace de WhatsApp.
    - Ajusta el `href` del segundo `<motion.a>` para cambiar el correo o el asunto del mensaje.
 
-2. **Botón flotante** (`components/WhatsAppButton.tsx`):
+2. **CTA final** (`components/FinalCTA.tsx`):
+   - Actualiza los enlaces de WhatsApp y correo si deseas cambiar los puntos de contacto.
+
+3. **Botón flotante** (`components/WhatsAppButton.tsx`):
    - Cambia la URL en el atributo `href` para actualizar el número o el mensaje prellenado.
 
-3. **Texto visible**:
+4. **Texto visible**:
    - Los textos “Hablar con un experto”, “Solicitar cotización” y “Contáctanos por WhatsApp” se pueden ajustar directamente en los mismos archivos.
 
 ## Estilos y consistencia
