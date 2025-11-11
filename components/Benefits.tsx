@@ -64,17 +64,25 @@ const Benefits = () => {
           whileInView="visible"
           viewport={{ once: true, margin: '-100px' }}
           variants={containerVariants}
+          className="mb-12 text-center"
+        >
+          <motion.p
+            variants={itemVariants}
+            className="text-2xl md:text-3xl font-semibold text-primary leading-relaxed max-w-3xl mx-auto"
+          >
+            Recibe reportes automáticos con tus históricos de compra, métricas clave y oportunidades de ahorro.
+          </motion.p>
+        </motion.div>
+
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={containerVariants}
           className="grid lg:grid-cols-2 gap-16 items-center"
         >
           {/* Content */}
           <div>
-            <motion.p
-              variants={itemVariants}
-              className="text-2xl md:text-3xl font-semibold text-primary mb-6 leading-relaxed text-center"
-            >
-              Recibe reportes automáticos con tus históricos de compra, métricas clave y oportunidades de ahorro.
-            </motion.p>
-
             <motion.h2
               variants={itemVariants}
               className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
