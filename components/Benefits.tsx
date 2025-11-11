@@ -1,7 +1,15 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { CheckCircle, Clock, Brain, BookOpen, FileText, TrendingUp, BarChart3 } from 'lucide-react'
+import {
+  CheckCircle,
+  Clock,
+  Brain,
+  BookOpen,
+  FileText,
+  TrendingUp,
+  BarChart3,
+} from 'lucide-react'
 
 const Benefits = () => {
   const benefits = [
@@ -54,31 +62,43 @@ const Benefits = () => {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true, margin: '-100px' }}
           variants={containerVariants}
           className="grid lg:grid-cols-2 gap-16 items-center"
         >
           {/* Content */}
           <div>
+            <motion.div
+              variants={itemVariants}
+              className="mb-6 p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-semibold text-lg leading-relaxed"
+            >
+              Recibe reportes automáticos con tus históricos de compra, métricas clave y oportunidades de ahorro.
+            </motion.div>
+
             <motion.h2
               variants={itemVariants}
               className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
             >
               Beneficios adicionales que marcan la diferencia
             </motion.h2>
-            
+
             <motion.p
               variants={itemVariants}
               className="text-xl text-gray-800 mb-8 leading-relaxed"
             >
-              Más allá de los ahorros en costos, Naova te ofrece ventajas 
+              Más allá de los ahorros en costos, Naova te ofrece ventajas
               estratégicas que transforman tu operación de compras.
             </motion.p>
 
-            <motion.div
-              variants={containerVariants}
-              className="space-y-6"
+            <motion.p
+              variants={itemVariants}
+              className="text-base text-gray-700 mb-8 leading-relaxed italic"
             >
+              Naova ayuda a áreas de mantenimiento, seguridad industrial y logística a comprar materiales
+              como EPP, refacciones y consumibles sin complicaciones.
+            </motion.p>
+
+            <motion.div variants={containerVariants} className="space-y-6">
               {benefits.map((benefit, index) => (
                 <motion.div
                   key={index}
@@ -89,12 +109,8 @@ const Benefits = () => {
                     <benefit.icon className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {benefit.title}
-                    </h3>
-                    <p className="text-gray-800 leading-relaxed">
-                      {benefit.description}
-                    </p>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{benefit.title}</h3>
+                    <p className="text-gray-800 leading-relaxed">{benefit.description}</p>
                   </div>
                 </motion.div>
               ))}
@@ -105,7 +121,7 @@ const Benefits = () => {
           <motion.div
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.8 }}
             className="relative"
           >
@@ -116,7 +132,7 @@ const Benefits = () => {
                   <h4 className="text-lg font-semibold text-gray-900">Dashboard</h4>
                   <div className="w-3 h-3 bg-green-400 rounded-full"></div>
                 </div>
-                
+
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="text-center p-4 bg-gray-50 rounded-xl">
@@ -140,7 +156,7 @@ const Benefits = () => {
                       <div className="bg-primary h-2 rounded-full w-4/5"></div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-600">Tiempo ahorrado</span>
@@ -182,3 +198,4 @@ const Benefits = () => {
 }
 
 export default Benefits
+

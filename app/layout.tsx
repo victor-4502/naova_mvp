@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import WhatsAppButton from '@/components/WhatsAppButton'
 
 export const metadata: Metadata = {
   title: 'Naova - Simplifica tus compras de indirectos',
-  description: 'Naova es tu socio estratégico en compras industriales. Sin curva de aprendizaje, sin costo inicial, con resultados medibles.',
+  description:
+    'Naova es tu socio estratégico en compras industriales. Sin curva de aprendizaje, sin costo inicial, con resultados medibles.',
   keywords: 'compras industriales, SaaS, indirectos, licitaciones, proveedores',
 }
 
@@ -16,7 +18,9 @@ export default function RootLayout({
     <html lang="es">
       <body className="antialiased">
         {children}
+        <WhatsAppButton />
       </body>
     </html>
   )
 }
+

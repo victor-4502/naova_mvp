@@ -1,7 +1,16 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Send, Settings, Users, BarChart3, FileText, Building2, TrendingUp, CheckCircle } from 'lucide-react'
+import {
+  Send,
+  Settings,
+  Users,
+  BarChart3,
+  FileText,
+  Building2,
+  TrendingUp,
+  CheckCircle,
+} from 'lucide-react'
 
 const HowItWorks = () => {
   const steps = [
@@ -9,7 +18,8 @@ const HowItWorks = () => {
       number: '01',
       icon: FileText,
       title: 'Cliente envía requerimientos',
-      description: 'Envías tus necesidades de compra a través de nuestra plataforma intuitiva. Sin formularios complicados.',
+      description:
+        'Envías tus necesidades de compra a través de nuestra plataforma intuitiva. Sin formularios complicados.',
       color: 'text-blue-500',
       bgColor: 'bg-blue-50',
       illustration: 'form',
@@ -18,7 +28,8 @@ const HowItWorks = () => {
       number: '02',
       icon: Settings,
       title: 'Naova organiza y optimiza licitación',
-      description: 'Nuestro sistema organiza automáticamente la licitación, categoriza proveedores y optimiza el proceso.',
+      description:
+        'Nuestro sistema organiza automáticamente la licitación, categoriza proveedores y optimiza el proceso.',
       color: 'text-green-500',
       bgColor: 'bg-green-50',
       illustration: 'process',
@@ -27,7 +38,8 @@ const HowItWorks = () => {
       number: '03',
       icon: Building2,
       title: 'Proveedores compiten estratégicamente',
-      description: 'Los proveedores precalificados compiten de manera transparente, ofreciendo las mejores condiciones.',
+      description:
+        'Los proveedores precalificados compiten de manera transparente, ofreciendo las mejores condiciones.',
       color: 'text-purple-500',
       bgColor: 'bg-purple-50',
       illustration: 'competition',
@@ -36,7 +48,8 @@ const HowItWorks = () => {
       number: '04',
       icon: TrendingUp,
       title: 'Cliente obtiene ahorros y reportes',
-      description: 'Recibes propuestas optimizadas, reportes detallados y ahorros medibles en tiempo y costos.',
+      description:
+        'Recibes propuestas optimizadas, reportes detallados y ahorros medibles en tiempo y costos.',
       color: 'text-orange-500',
       bgColor: 'bg-orange-50',
       illustration: 'results',
@@ -64,13 +77,23 @@ const HowItWorks = () => {
     },
   }
 
+  const practicalSteps = [
+    '1️⃣ Mándanos tu requerimiento por WhatsApp o correo.',
+    '2️⃣ Recibe hasta dos cotizaciones comparativas en menos de 48 h.',
+    '3️⃣ Elige el proveedor ideal y coloca tu orden.',
+    '4️⃣ Recibe actualizaciones del pedido hasta la entrega.',
+  ]
+
   return (
-    <section id="how-it-works" className="section-padding bg-gradient-to-br from-purple-100 to-purple-200">
+    <section
+      id="how-it-works"
+      className="section-padding bg-gradient-to-br from-purple-100 to-purple-200"
+    >
       <div className="container-max">
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true, margin: '-100px' }}
           variants={containerVariants}
           className="text-center mb-16"
         >
@@ -84,15 +107,33 @@ const HowItWorks = () => {
             variants={itemVariants}
             className="text-xl text-gray-800 max-w-3xl mx-auto"
           >
-            Un proceso simple y eficiente en 4 pasos que transforma 
-            la manera en que gestionas tus compras industriales
+            Un proceso simple y eficiente en 4 pasos que transforma la manera en que gestionas tus compras industriales
           </motion.p>
+          <motion.h3
+            variants={itemVariants}
+            className="text-lg md:text-xl font-semibold text-primary mt-6"
+          >
+            Así funciona Naova en la práctica
+          </motion.h3>
+          <motion.div
+            variants={itemVariants}
+            className="mt-6 grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto text-left"
+          >
+            {practicalSteps.map((step) => (
+              <div
+                key={step}
+                className="bg-white/70 rounded-xl px-5 py-4 shadow-soft text-gray-800"
+              >
+                {step}
+              </div>
+            ))}
+          </motion.div>
         </motion.div>
 
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true, margin: '-100px' }}
           variants={containerVariants}
           className="space-y-12"
         >
@@ -107,30 +148,28 @@ const HowItWorks = () => {
               {/* Content */}
               <div className="flex-1 text-center lg:text-left">
                 <div className="flex items-center justify-center lg:justify-start gap-4 mb-4">
-                  <span className="text-6xl font-bold text-gray-200">
-                    {step.number}
-                  </span>
-                  <div className={`w-12 h-12 ${step.bgColor} rounded-xl flex items-center justify-center`}>
+                  <span className="text-6xl font-bold text-gray-200">{step.number}</span>
+                  <div
+                    className={`w-12 h-12 ${step.bgColor} rounded-xl flex items-center justify-center`}
+                  >
                     <step.icon className={`h-6 w-6 ${step.color}`} />
                   </div>
                 </div>
-                
-                <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                  {step.title}
-                </h3>
-                
-                <p className="text-gray-800 leading-relaxed text-lg">
-                  {step.description}
-                </p>
+
+                <h3 className="text-2xl font-semibold text-gray-900 mb-4">{step.title}</h3>
+
+                <p className="text-gray-800 leading-relaxed text-lg">{step.description}</p>
               </div>
 
               {/* Visual */}
               <div className="flex-1 max-w-md">
                 <div className={`${step.bgColor} rounded-2xl p-8 text-center`}>
-                  <div className={`w-20 h-20 ${step.bgColor} rounded-2xl flex items-center justify-center mx-auto mb-6 border-2 border-white shadow-soft`}>
+                  <div
+                    className={`w-20 h-20 ${step.bgColor} rounded-2xl flex items-center justify-center mx-auto mb-6 border-2 border-white shadow-soft`}
+                  >
                     <step.icon className={`h-10 w-10 ${step.color}`} />
                   </div>
-                  
+
                   {/* Ilustraciones específicas para cada paso */}
                   {step.illustration === 'form' && (
                     <div className="space-y-4">
@@ -141,9 +180,15 @@ const HowItWorks = () => {
                           <div className="h-2 bg-blue-200 rounded w-1/2"></div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <div className="w-8 h-6 bg-blue-100 rounded text-xs flex items-center justify-center">📝</div>
-                          <div className="w-8 h-6 bg-blue-100 rounded text-xs flex items-center justify-center">📎</div>
-                          <div className="w-8 h-6 bg-blue-100 rounded text-xs flex items-center justify-center">📊</div>
+                          <div className="w-8 h-6 bg-blue-100 rounded text-xs flex items-center justify-center">
+                            📝
+                          </div>
+                          <div className="w-8 h-6 bg-blue-100 rounded text-xs flex items-center justify-center">
+                            📎
+                          </div>
+                          <div className="w-8 h-6 bg-blue-100 rounded text-xs flex items-center justify-center">
+                            📊
+                          </div>
                         </div>
                       </div>
                       <div className="text-xs text-gray-600">Formulario inteligente</div>
@@ -234,3 +279,4 @@ const HowItWorks = () => {
 }
 
 export default HowItWorks
+
