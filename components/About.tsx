@@ -113,51 +113,16 @@ const About = () => {
             </motion.div>
           </div>
 
-          {/* Visual */}
           <motion.div
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.8 }}
-            className="relative"
+            className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-8 shadow-soft flex items-center justify-center"
           >
-            {/* Team photo placeholder */}
-            <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-8">
-              <div className="bg-white rounded-2xl p-8 shadow-soft">
-                <div className="text-center mb-6">
-                  <h4 className="text-xl font-semibold text-gray-900 mb-2">
-                    Nuestro Equipo
-                  </h4>
-                  <p className="text-gray-800">Expertos en compras industriales y tecnología</p>
-                </div>
-
-                {/* Team grid placeholder */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div
-                      key={i}
-                      className="aspect-square bg-gray-100 rounded-xl flex items-center justify-center"
-                    >
-                      <Users className="h-8 w-8 text-gray-400" />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-6 border-t border-gray-200 text-left">
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    Construimos Naova junto a especialistas en compras, logística y tecnología para ofrecerte una solución hecha a la medida de los retos industriales.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating elements */}
-            <div className="absolute -top-4 -right-4 w-16 h-16 bg-secondary/20 rounded-full flex items-center justify-center">
-              <Award className="h-8 w-8 text-secondary" />
-            </div>
-            <div className="absolute -bottom-4 -left-4 w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
-              <Target className="h-6 w-6 text-primary" />
-            </div>
+            <p className="text-lg text-gray-700 leading-relaxed text-center max-w-md">
+              Construimos Naova junto a especialistas en compras, logística y tecnología para ofrecerte una solución hecha a la medida de los retos industriales.
+            </p>
           </motion.div>
         </motion.div>
       </div>
