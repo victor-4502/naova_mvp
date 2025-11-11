@@ -82,7 +82,9 @@ const FinalCTA = () => {
             <motion.a
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              href="mailto:contacto@naova.com.mx?subject=Quiero%20hablar%20con%20un%20experto%20de%20Naova"
+              href="https://wa.me/message/UP7NK5BPILPCC1?text=Hola%20Naova%20quiero%20una%20prueba%20gratis"
+              target="_blank"
+              rel="noreferrer"
               className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 px-8 py-4 rounded-lg font-semibold hover:bg-white/20 transition-all duration-300 text-lg"
             >
               Hablar con un experto

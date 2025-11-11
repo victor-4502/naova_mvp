@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight, Play } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 const Hero = () => {
   const scrollToSection = (sectionId: string) => {
@@ -61,12 +61,10 @@ const Hero = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center gap-2 px-8 py-4 text-gray-600 hover:text-primary transition-colors duration-300"
+                onClick={() => scrollToSection('pricing')}
+                className="flex items-center justify-center gap-2 px-8 py-4 text-gray-600 hover:text-primary transition-colors duration-300 border border-primary/40 rounded-lg"
               >
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Play className="h-5 w-5 text-primary" />
-                </div>
-                Ver demo
+                Conoce cómo trabajamos
               </motion.button>
             </motion.div>
 
