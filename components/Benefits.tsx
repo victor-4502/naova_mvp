@@ -68,12 +68,12 @@ const Benefits = () => {
         >
           {/* Content */}
           <div>
-            <motion.div
+            <motion.p
               variants={itemVariants}
-              className="mb-6 p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-semibold text-lg leading-relaxed"
+              className="text-2xl md:text-3xl font-semibold text-primary mb-6 leading-relaxed text-left"
             >
               Recibe reportes automáticos con tus históricos de compra, métricas clave y oportunidades de ahorro.
-            </motion.div>
+            </motion.p>
 
             <motion.h2
               variants={itemVariants}

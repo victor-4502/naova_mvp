@@ -78,10 +78,10 @@ const HowItWorks = () => {
   }
 
   const practicalSteps = [
-    '1️⃣ Mándanos tu requerimiento por WhatsApp o correo.',
-    '2️⃣ Recibe hasta dos cotizaciones comparativas en menos de 48 h.',
-    '3️⃣ Elige el proveedor ideal y coloca tu orden.',
-    '4️⃣ Recibe actualizaciones del pedido hasta la entrega.',
+    'Envía tu requerimiento por WhatsApp o correo y cuéntanos qué necesitas.',
+    'Recibe hasta dos cotizaciones comparativas en menos de 48 horas.',
+    'Elige al proveedor ideal y confirma tu orden con nuestro acompañamiento.',
+    'Monitorea el estatus: te avisamos de cada actualización hasta la entrega.',
   ]
 
   return (
@@ -115,19 +115,19 @@ const HowItWorks = () => {
           >
             Así funciona Naova en la práctica
           </motion.h3>
-          <motion.div
+          <motion.ol
             variants={itemVariants}
-            className="mt-6 grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto text-left"
+            className="mt-8 max-w-3xl mx-auto space-y-4 text-left text-lg text-gray-800"
           >
-            {practicalSteps.map((step) => (
-              <div
-                key={step}
-                className="bg-white/70 rounded-xl px-5 py-4 shadow-soft text-gray-800"
-              >
-                {step}
-              </div>
+            {practicalSteps.map((step, index) => (
+              <li key={step} className="flex gap-4 items-start">
+                <span className="mt-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white font-semibold">
+                  {index + 1}
+                </span>
+                <span className="leading-relaxed">{step}</span>
+              </li>
             ))}
-          </motion.div>
+          </motion.ol>
         </motion.div>
 
         <motion.div
@@ -148,7 +148,7 @@ const HowItWorks = () => {
               {/* Content */}
               <div className="flex-1 text-center lg:text-left">
                 <div className="flex items-center justify-center lg:justify-start gap-4 mb-4">
-                  <span className="text-6xl font-bold text-gray-200">{step.number}</span>
+                  <span className="text-6xl font-bold text-primary">{step.number}</span>
                   <div
                     className={`w-12 h-12 ${step.bgColor} rounded-xl flex items-center justify-center`}
                   >
