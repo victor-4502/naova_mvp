@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Users, Target, Award, Sparkles } from 'lucide-react'
+import { Users, Target, Award } from 'lucide-react'
 
 const About = () => {
   const values = [
@@ -54,10 +54,9 @@ const About = () => {
           whileInView="visible"
           viewport={{ once: true, margin: '-100px' }}
           variants={containerVariants}
-          className="grid lg:grid-cols-2 gap-16 items-center"
+          className="max-w-4xl mx-auto space-y-10 text-center lg:text-left"
         >
-          {/* Content */}
-          <div>
+          <div className="space-y-6">
             <motion.h2
               variants={itemVariants}
               className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
@@ -92,87 +91,26 @@ const About = () => {
               que se adapta a tu forma de trabajar, no al revés.
             </motion.p>
 
-            <motion.div variants={containerVariants} className="space-y-6">
+            <motion.div variants={containerVariants} className="space-y-6 mx-auto lg:mx-0 max-w-3xl">
               {values.map((value, index) => (
                 <motion.div
                   key={index}
                   variants={itemVariants}
-                  className="flex items-start gap-4"
+                  className="flex flex-col sm:flex-row sm:items-start sm:gap-4 bg-white/70 rounded-2xl px-5 py-4 shadow-soft"
                 >
-                  <div className="flex-shrink-0 w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <div className="flex-shrink-0 w-12 h-12 mx-auto sm:mx-0 mb-3 sm:mb-0 bg-primary/10 rounded-xl flex items-center justify-center">
                     <value.icon className="h-6 w-6 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <div className="text-gray-800 text-left">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 text-center sm:text-left">
                       {value.title}
                     </h3>
-                    <p className="text-gray-800 leading-relaxed">{value.description}</p>
+                    <p className="leading-relaxed">{value.description}</p>
                   </div>
                 </motion.div>
               ))}
             </motion.div>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-100px' }}
-            transition={{ duration: 0.8 }}
-            className="relative bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-10 shadow-soft"
-          >
-            <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-white/70 backdrop-blur-sm flex items-center justify-center shadow-medium">
-              <Award className="h-6 w-6 text-secondary" />
-            </div>
-
-            <div className="bg-white rounded-2xl p-8 shadow-soft space-y-6">
-              <div>
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">
-                  Equipo especializado
-                </h4>
-                <p className="text-gray-700 leading-relaxed">
-                  Construimos Naova junto a especialistas en compras, logística y tecnología para ofrecerte una solución hecha a la medida de los retos industriales.
-                </p>
-              </div>
-
-              <div className="space-y-4 text-gray-700">
-                <div className="flex items-start gap-3">
-                  <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Users className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h5 className="font-semibold text-gray-900">Compras estratégicas</h5>
-                    <p className="text-sm leading-relaxed">
-                      Experiencia directa gestionando licitaciones, proveedores y acuerdos marco.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
-                    <Target className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h5 className="font-semibold text-gray-900">Operaciones y logística</h5>
-                    <p className="text-sm leading-relaxed">
-                      Coordinamos cada entrega para asegurar tiempos y condiciones acordadas.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h5 className="font-semibold text-gray-900">Tecnología aplicada</h5>
-                    <p className="text-sm leading-relaxed">
-                      Automatizamos seguimiento, reportes y análisis para darte visibilidad en tiempo real.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </motion.div>
       </div>
     </section>
