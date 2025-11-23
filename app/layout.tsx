@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import WhatsAppButton from '@/components/WhatsAppButton'
+import { QueryProvider } from '@/lib/providers/query-provider'
 
 export const metadata: Metadata = {
   title: 'Naova - Simplifica tus compras de indirectos',
@@ -17,8 +18,10 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="antialiased">
-        {children}
-        <WhatsAppButton />
+        <QueryProvider>
+          {children}
+          <WhatsAppButton />
+        </QueryProvider>
       </body>
     </html>
   )

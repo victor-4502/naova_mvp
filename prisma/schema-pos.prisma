@@ -1,0 +1,797 @@
+// Naova Procurement Operating System - Prisma Schema
+// PostgreSQL database schema - V2.0
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  admin_naova
+  operator_naova
+  client_enterprise
+  supplier
+}
+
+enum RequestSource {
+  whatsapp
+  email
+  web
+  chat
+  file
+  api
+}
+
+enum RequestStatus {
+  new_request
+  incomplete_information
+  ready_for_supplier_matching
+  supplier_matching
+  rfq_sent
+  quotes_received
+  selecting_quote
+  quote_selected
+  po_created
+  in_progress
+  delivered
+  closed
+  cancelled
+}
+
+enum PipelineStage {
+  new_request
+  needs_info
+  finding_suppliers
+  quotes_in_progress
+  selecting_quote
+  purchase_in_progress
+  delivered
+  closed
+}
+
+enum UrgencyLevel {
+  low
+  normal
+  high
+  urgent
+}
+
+enum SupplierStatus {
+  active
+  inactive
+  suspended
+  pending_verification
+}
+
+enum RFQStatus {
+  draft
+  sent
+  in_progress
+  closed
+  cancelled
+}
+
+enum QuoteStatus {
+  pending
+  submitted
+  accepted
+  rejected
+  expired
+}
+
+enum POStatus {
+  approved_by_client
+  purchase_order_created
+  payment_pending
+  payment_received
+  supplier_confirmed
+  in_transit
+  delivered
+  closed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  completed
+  failed
+  refunded
+}
+
+enum MessageSource {
+  whatsapp
+  email
+  web
+  chat
+  system
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+enum NotificationType {
+  request_created
+  info_needed
+  suppliers_found
+  rfq_sent
+  quote_received
+  quote_selected
+  po_created
+  status_update
+  delivery_update
+  system_alert
+}
+
+// ============================================
+// USER MODELS
+// ============================================
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(client_enterprise)
+  company      String?
+  phone        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  clientProfile    ClientProfile?
+  requests         Request[]
+  purchaseOrders   PurchaseOrder[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  legacyRequirements Requirement[] @relation("LegacyRequirements")
+  
+  @@index([email])
+  @@index([role])
+  @@index([active])
+}
+
+model ClientProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billingPlan   String   @default("trial") // trial, basic, enterprise
+  trialEndsAt   DateTime?
+  metadata      Json?    // Additional flexible data
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([billingPlan])
+}
+
+// ============================================
+// REQUEST MODELS (Inbox Inteligente)
+// ============================================
+
+model Request {
+  id                String         @id @default(cuid())
+  source            RequestSource
+  sourceId          String?       // ID del mensaje original
+  clientId          String
+  client            User           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Estado del pipeline
+  status            RequestStatus  @default(new_request)
+  pipelineStage     PipelineStage @default(new_request)
+  
+  // Información extraída
+  rawContent        String        @db.Text
+  normalizedContent Json?         // Contenido procesado
+  
+  // Clasificación automática
+  category          String?
+  subcategory       String?
+  urgency           UrgencyLevel  @default(normal)
+  
+  // Metadata
+  attachments       Attachment[]
+  messages          Message[]
+  specs             RequestSpec?
+  rfq               RFQ?
+  purchaseOrder     PurchaseOrder?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([clientId])
+  @@index([status])
+  @@index([pipelineStage])
+  @@index([source])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model RequestSpec {
+  id                String   @id @default(cuid())
+  requestId         String   @unique
+  request           Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  // Especificaciones normalizadas
+  normalizedSpecs   Json     // Schema estructurado por categoría
+  completeness      Float    @default(0) // 0-1 score
+  missingFields     String[] // Campos faltantes
+  
+  // Items del request
+  items             SpecItem[]
+  
+  // Validaciones
+  isValid           Boolean  @default(false)
+  validationErrors  Json?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model SpecItem {
+  id                String      @id @default(cuid())
+  specId            String
+  spec              RequestSpec @relation(fields: [specId], references: [id], onDelete: Cascade)
+  
+  name              String
+  description       String?     @db.Text
+  category          String
+  subcategory       String?
+  quantity          Float
+  unit              String      // Normalizado: kg, l, m, pcs, etc.
+  unitPrice         Float?
+  totalPrice        Float?
+  
+  // Especificaciones técnicas
+  specifications    Json?
+  brand             String?
+  model             String?
+  sku               String?
+  
+  // Metadata
+  budget            Float?
+  deliveryDate      DateTime?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  rfqItems          RFQItem[]
+  quoteItems        QuoteItem[]
+  poItems           POItem[]
+  
+  @@index([specId])
+  @@index([category])
+}
+
+// ============================================
+// SUPPLIER MODELS
+// ============================================
+
+model Supplier {
+  id                String            @id @default(cuid())
+  name              String
+  companyName       String
+  email             String
+  phone             String?
+  website           String?
+  
+  // Ubicación
+  address           String?
+  city              String?
+  state             String?
+  country           String            @default("México")
+  zipCode           String?
+  
+  // Clasificación
+  categories        SupplierCategory[]
+  specialties       String[]
+  
+  // Scoring
+  score             SupplierScore?
+  
+  // Estado
+  status            SupplierStatus    @default(active)
+  verified          Boolean           @default(false)
+  
+  // Relaciones
+  rfqInvitations    RFQSupplier[]
+  quotes            SupplierQuote[]
+  purchaseOrders    PurchaseOrder[]
+  purchaseHistory   PurchaseHistory[] @relation("LegacyPurchaseHistory")
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([status])
+  @@index([verified])
+  @@index([email])
+}
+
+model SupplierCategory {
+  id                String   @id @default(cuid())
+  supplierId        String
+  supplier          Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  category          String
+  subcategory       String?
+  
+  @@unique([supplierId, category, subcategory])
+  @@index([category])
+  @@index([supplierId])
+}
+
+model SupplierScore {
+  id                  String   @id @default(cuid())
+  supplierId          String   @unique
+  supplier            Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  // Scores individuales
+  priceScore          Float    @default(0) // 0-10
+  qualityScore        Float    @default(0)
+  deliveryScore       Float    @default(0)
+  responseTimeScore   Float    @default(0)
+  communicationScore  Float    @default(0)
+  
+  // Score total
+  overallScore        Float    @default(0)
+  
+  // Métricas
+  totalOrders         Int      @default(0)
+  totalVolume          Float    @default(0)
+  averageResponseTime  Int?     // minutos
+  onTimeDeliveryRate   Float    @default(0) // 0-1
+  
+  updatedAt           DateTime @updatedAt
+}
+
+// ============================================
+// RFQ MODELS
+// ============================================
+
+model RFQ {
+  id                String         @id @default(cuid())
+  requestId         String         @unique
+  request           Request        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  // Estado
+  status            RFQStatus      @default(draft)
+  
+  // Información
+  title             String
+  description       String?       @db.Text
+  deadline          DateTime
+  
+  // Items
+  items             RFQItem[]
+  
+  // Proveedores
+  invitedSuppliers  RFQSupplier[]
+  quotes            SupplierQuote[]
+  
+  // Automatización
+  autoGenerated     Boolean       @default(false)
+  sentAt            DateTime?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([status])
+  @@index([deadline])
+  @@index([requestId])
+}
+
+model RFQItem {
+  id                String      @id @default(cuid())
+  rfqId             String
+  rfq               RFQ         @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  specItemId        String?
+  specItem          SpecItem?   @relation(fields: [specItemId], references: [id])
+  
+  name              String
+  description       String?     @db.Text
+  category          String
+  quantity          Float
+  unit              String
+  specifications    Json?
+  
+  // Relations
+  quoteItems        QuoteItem[]
+  
+  @@index([rfqId])
+  @@index([specItemId])
+}
+
+model RFQSupplier {
+  id                String   @id @default(cuid())
+  rfqId             String
+  rfq               RFQ      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplierId        String
+  supplier          Supplier @relation(fields: [supplierId], references: [id])
+  
+  invitedAt         DateTime @default(now())
+  viewedAt          DateTime?
+  respondedAt       DateTime?
+  
+  @@unique([rfqId, supplierId])
+  @@index([rfqId])
+  @@index([supplierId])
+}
+
+// ============================================
+// QUOTE MODELS
+// ============================================
+
+model SupplierQuote {
+  id                String         @id @default(cuid())
+  rfqId             String
+  rfq               RFQ            @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplierId        String
+  supplier          Supplier       @relation(fields: [supplierId], references: [id])
+  
+  // Estado
+  status            QuoteStatus    @default(pending)
+  
+  // Precios
+  subtotal          Float
+  taxes             Float          @default(0)
+  shipping          Float          @default(0)
+  total             Float
+  
+  // Términos
+  validUntil        DateTime
+  deliveryDays      Int
+  paymentTerms      String?
+  warranty          String?
+  availability      String?        // in_stock, made_to_order, etc.
+  
+  // Items
+  items             QuoteItem[]
+  
+  // Comparación
+  comparisonScore   Float?         // Score calculado para comparación
+  
+  // Metadata
+  notes             String?        @db.Text
+  attachments       Attachment[]
+  
+  // Relations
+  purchaseOrder     PurchaseOrder?
+  
+  submittedAt       DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  @@index([rfqId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([submittedAt])
+}
+
+model QuoteItem {
+  id                String         @id @default(cuid())
+  quoteId           String
+  quote             SupplierQuote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  rfqItemId         String?
+  rfqItem           RFQItem?       @relation(fields: [rfqItemId], references: [id])
+  specItemId        String?
+  specItem          SpecItem?      @relation(fields: [specItemId], references: [id])
+  
+  name              String
+  quantity          Float
+  unit              String
+  unitPrice         Float
+  subtotal          Float
+  
+  // Especificaciones del proveedor
+  brand             String?
+  model             String?
+  specifications    Json?
+  
+  @@index([quoteId])
+  @@index([rfqItemId])
+}
+
+// ============================================
+// PURCHASE ORDER MODELS
+// ============================================
+
+model PurchaseOrder {
+  id                String            @id @default(cuid())
+  requestId         String            @unique
+  request           Request           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  quoteId           String            @unique
+  quote             SupplierQuote     @relation(fields: [quoteId], references: [id])
+  supplierId        String
+  supplier          Supplier          @relation(fields: [supplierId], references: [id])
+  clientId          String
+  client            User              @relation(fields: [clientId], references: [id])
+  
+  // Estado del tracking
+  status            POStatus          @default(approved_by_client)
+  
+  // Información
+  poNumber          String            @unique
+  totalAmount       Float
+  
+  // Tracking
+  timeline          POTimelineEvent[]
+  
+  // Items
+  items             POItem[]
+  
+  // Pagos
+  paymentStatus     PaymentStatus     @default(pending)
+  paymentMethod     String?
+  paymentReference  String?
+  paidAt            DateTime?
+  
+  // Entrega
+  estimatedDelivery DateTime?
+  actualDelivery    DateTime?
+  deliveryAddress   String?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([clientId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([poNumber])
+  @@index([createdAt])
+}
+
+model POTimelineEvent {
+  id                String         @id @default(cuid())
+  poId              String
+  po                PurchaseOrder  @relation(fields: [poId], references: [id], onDelete: Cascade)
+  
+  status            POStatus
+  description       String
+  metadata          Json?
+  
+  createdAt         DateTime       @default(now())
+  
+  @@index([poId])
+  @@index([createdAt])
+}
+
+model POItem {
+  id                String         @id @default(cuid())
+  poId              String
+  po                PurchaseOrder  @relation(fields: [poId], references: [id], onDelete: Cascade)
+  specItemId        String?
+  specItem          SpecItem?      @relation(fields: [specItemId], references: [id])
+  
+  name              String
+  description       String?        @db.Text
+  quantity          Float
+  unit              String
+  unitPrice         Float
+  subtotal          Float
+  
+  @@index([poId])
+}
+
+// ============================================
+// MESSAGE MODELS
+// ============================================
+
+model Message {
+  id                String            @id @default(cuid())
+  requestId         String?
+  request           Request?           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  source            MessageSource
+  sourceId          String?            // ID del mensaje original
+  direction         MessageDirection
+  
+  content           String            @db.Text
+  attachments       Attachment[]
+  
+  // Metadata
+  from              String?
+  to                String?
+  subject           String?
+  
+  processed         Boolean           @default(false)
+  processedAt       DateTime?
+  
+  createdAt         DateTime          @default(now())
+  
+  @@index([requestId])
+  @@index([source])
+  @@index([processed])
+  @@index([createdAt])
+}
+
+model Attachment {
+  id                String            @id @default(cuid())
+  
+  // Relaciones polimórficas
+  requestId         String?
+  request           Request?          @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  messageId         String?
+  message           Message?         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  quoteId           String?
+  quote             SupplierQuote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  
+  filename          String
+  mimeType          String
+  size              Int               // bytes
+  url               String            // S3/Storage URL
+  
+  // Procesamiento
+  processed         Boolean           @default(false)
+  extractedText     String?           @db.Text
+  ocrData           Json?
+  
+  createdAt         DateTime          @default(now())
+  
+  @@index([requestId])
+  @@index([messageId])
+  @@index([quoteId])
+}
+
+// ============================================
+// NOTIFICATION MODELS
+// ============================================
+
+model Notification {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type              NotificationType
+  title              String
+  message            String            @db.Text
+  
+  // Relación opcional
+  requestId         String?
+  request            Request?          @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  read              Boolean           @default(false)
+  readAt            DateTime?
+  
+  metadata          Json?
+  
+  createdAt         DateTime          @default(now())
+  
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@index([type])
+}
+
+// ============================================
+// LEGACY MODELS (Mantener para compatibilidad)
+// ============================================
+
+// Mantener modelos antiguos para migración gradual
+model Requirement {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      User     @relation("LegacyRequirements", fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  category    String
+  description String   @db.Text
+  quantity    Float
+  unit        String
+  fileUrl     String?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([clientId])
+  @@index([status])
+}
+
+model Tender {
+  id            String   @id @default(cuid())
+  requirementId String   @unique
+  requirement   Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  title         String
+  status        String   @default("draft")
+  startAt       DateTime?
+  endAt         DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([status])
+}
+
+model Provider {
+  id        String   @id @default(cuid())
+  name      String
+  category  String
+  contact   String?
+  email     String?
+  phone     String?
+  rating    Float    @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  offers           Offer[]
+  purchaseHistory  PurchaseHistory[] @relation("LegacyPurchaseHistory")
+  
+  @@index([category])
+  @@index([active])
+}
+
+model Offer {
+  id           String   @id @default(cuid())
+  tenderId     String
+  tender       Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id])
+  price        Float
+  quantity     Float
+  deliveryDays Int
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([tenderId])
+  @@index([providerId])
+}
+
+model PurchaseHistory {
+  id         String   @id @default(cuid())
+  clientId   String
+  category   String
+  item       String
+  quantity   Float
+  unit       String
+  unitPrice  Float
+  totalPrice Float
+  supplierId String?
+  supplier   Supplier? @relation("LegacyPurchaseHistory", fields: [supplierId], references: [id])
+  date       DateTime
+  createdAt  DateTime @default(now())
+  
+  @@index([clientId])
+  @@index([category])
+  @@index([date])
+}
+
+model ContactLead {
+  id           String   @id @default(cuid())
+  name         String
+  company      String?
+  email        String
+  phone        String?
+  planInterest String?
+  message      String?  @db.Text
+  status       String   @default("new")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+}
+
