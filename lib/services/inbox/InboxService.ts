@@ -89,7 +89,7 @@ export class InboxService {
         urgency: classification.urgency,
         messages: {
           create: {
-            source: input.source,
+            source: input.source === 'file' ? 'web' : input.source,
             sourceId: input.sourceId,
             direction: 'inbound',
             content: input.content,
