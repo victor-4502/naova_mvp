@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { hashPassword, generateRandomPassword } from '@/lib/auth'
 import { sendWelcomeEmail } from '@/lib/email'
 import { z } from 'zod'
+import { UserRole } from '@prisma/client'
 
 const createClientSchema = z.object({
   name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
         company,
         phone,
         passwordHash,
-        role: 'client_enterprise',
+        role: UserRole.client_enterprise,
         clientProfile: {
           create: {
             billingPlan: plan,
@@ -117,5 +118,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
 
 

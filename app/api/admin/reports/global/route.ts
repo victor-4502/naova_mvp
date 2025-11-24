@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { subMonths, format } from 'date-fns'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     // 1. Total clients
     const totalClients = await prisma.user.count({
-      where: { role: 'client_enterprise', active: true },
+      where: { role: UserRole.client_enterprise, active: true },
     })
 
     // 2. Total volume (from purchase history)
@@ -105,7 +106,6 @@ export async function GET(request: NextRequest) {
         _count: {
           select: {
             offers: true,
-            purchaseHistory: true,
           },
         },
       },
@@ -180,7 +180,6 @@ export async function GET(request: NextRequest) {
           category: p.category,
           rating: p.rating,
           offersCount: p._count.offers,
-          purchasesCount: p._count.purchaseHistory,
         })),
         monthlyVolume,
         categoryBreakdown: categoryBreakdown.map(c => ({
@@ -198,5 +197,7 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+
 
 

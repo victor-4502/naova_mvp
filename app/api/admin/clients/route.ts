@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Get all clients with their profiles
     const clients = await prisma.user.findMany({
-      where: { role: 'client_enterprise' },
+      where: { role: UserRole.client_enterprise },
       include: {
         clientProfile: true,
         _count: {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       active: client.active,
       plan: client.clientProfile?.billingPlan,
       trialEndsAt: client.clientProfile?.trialEndsAt,
-      requirementsCount: client._count.requirements,
+      requirementsCount: client._count.legacyRequirements,
       createdAt: client.createdAt,
     }))
 
@@ -119,5 +120,6 @@ export async function PATCH(request: NextRequest) {
     )
   }
 }
+
 
 
