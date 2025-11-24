@@ -1,12 +1,13 @@
 // Sistema de gestión de usuarios usando Prisma (para producción)
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { UserRole } from '@prisma/client'
 
 interface User {
   id: string
   email: string
   password: string
-  role: 'ADMIN' | 'CLIENT'
+  role: UserRole.admin_naova | UserRole.client_enterprise
   company: string
   name?: string
   phone?: string
@@ -20,7 +21,7 @@ function prismaUserToLegacy(user: any): User {
     id: user.id,
     email: user.email,
     password: '', // Nunca devolvemos la contraseña
-    role: user.role === 'admin' ? 'ADMIN' : 'CLIENT',
+    role: user.role === UserRole.admin_naova ? UserRole.admin_naova : UserRole.client_enterprise,
     company: user.company || '',
     name: user.name || undefined,
     phone: user.phone || undefined,
@@ -67,7 +68,7 @@ export async function addUserToServer(userData: Omit<User, 'id'>): Promise<User>
         email: userData.email,
         name: userData.name || userData.email.split('@')[0],
         passwordHash,
-        role: userData.role === 'ADMIN' ? 'admin' : 'client',
+        role: userData.role === UserRole.admin_naova ? UserRole.admin_naova : UserRole.client_enterprise,
         company: userData.company || '',
         phone: userData.phone || null,
         active: userData.isActive !== false,
@@ -75,7 +76,7 @@ export async function addUserToServer(userData: Omit<User, 'id'>): Promise<User>
     })
 
     // Si es cliente, crear perfil de cliente
-    if (userData.role === 'CLIENT') {
+    if (userData.role === UserRole.client_enterprise) {
       await prisma.clientProfile.create({
         data: {
           userId: newUser.id,
@@ -118,11 +119,11 @@ export async function verifyCredentials(email: string, password: string): Promis
 }
 
 // Función para obtener usuarios por rol
-export async function getUsersByRole(role: 'ADMIN' | 'CLIENT'): Promise<User[]> {
+export async function getUsersByRole(role: UserRole.admin_naova | UserRole.client_enterprise): Promise<User[]> {
   try {
     const users = await prisma.user.findMany({
       where: {
-        role: role === 'ADMIN' ? 'admin' : 'client',
+        role: role === UserRole.admin_naova ? UserRole.admin_naova : UserRole.client_enterprise,
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -145,7 +146,7 @@ export async function updateUser(userId: string, updates: Partial<User>): Promis
     if (updates.phone !== undefined) prismaUpdates.phone = updates.phone
     if (updates.isActive !== undefined) prismaUpdates.active = updates.isActive
     if (updates.role !== undefined) {
-      prismaUpdates.role = updates.role === 'ADMIN' ? 'admin' : 'client'
+      prismaUpdates.role = updates.role === UserRole.admin_naova ? UserRole.admin_naova : UserRole.client_enterprise
     }
     
     // Si hay nueva contraseña, hashearla

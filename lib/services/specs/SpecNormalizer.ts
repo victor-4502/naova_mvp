@@ -46,7 +46,7 @@ export class SpecNormalizer {
         category,
         normalizedUnit
       )
-      if (!categoryUnitValidation.valid) {
+      if (!categoryUnitValidation.valid && categoryUnitValidation.error) {
         errors.push(categoryUnitValidation.error)
       }
     }
