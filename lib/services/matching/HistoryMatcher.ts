@@ -89,7 +89,7 @@ export class HistoryMatcher {
         const reasons = this.getMatchReasons(data)
         const averagePrice =
           data.prices.length > 0
-            ? data.prices.reduce((a, b) => a + b, 0) / data.prices.length
+            ? data.prices.reduce((a: number, b: number) => a + b, 0) / data.prices.length
             : null
 
         return {
