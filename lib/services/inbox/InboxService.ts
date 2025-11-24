@@ -83,7 +83,7 @@ export class InboxService {
         normalizedContent: {
           extracted,
           classification,
-        },
+        } as any,
         category: classification.category || undefined,
         subcategory: classification.subcategory || undefined,
         urgency: classification.urgency,
