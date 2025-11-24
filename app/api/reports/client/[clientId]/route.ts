@@ -140,6 +140,10 @@ export async function GET(
       where: {
         id: { in: supplierIds },
       },
+      include: {
+        categories: true,
+        score: true,
+      },
     })
 
     const topProvidersWithDetails = topProviders.map(tp => {
