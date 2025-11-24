@@ -31,7 +31,7 @@ export default function InboxView() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {requests.map((request) => (
+          {requests.map((request: any) => (
             <RequestCard
               key={request.id}
               request={request}
