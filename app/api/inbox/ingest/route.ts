@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/auth'
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticación
-    const user = await getCurrentUser(request)
+    const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
