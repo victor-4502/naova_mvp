@@ -44,11 +44,16 @@
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.0.7",
     "date-fns": "^3.3.0",
-    "recharts": "^2.10.0"
+    "recharts": "^2.10.0",
+    "xlsx": "^0.18.5",
+    "file-saver": "^2.0.5",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.0"
+    "eslint-config-next": "^14.2.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/file-saver": "^2.0.7"
   },
   "engines": {
     "node": ">=18.0.0",
