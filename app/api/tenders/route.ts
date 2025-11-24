@@ -36,20 +36,20 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         requirement: {
-          include: {
-            client: {
-              select: {
-                name: true,
-                email: true,
-                company: true,
-              },
-            },
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            quantity: true,
+            unit: true,
+            description: true,
           },
         },
         offers: {
           include: {
             provider: {
               select: {
+                id: true,
                 name: true,
                 category: true,
                 rating: true,
@@ -58,12 +58,6 @@ export async function GET(request: NextRequest) {
           },
           orderBy: {
             price: 'asc',
-          },
-        },
-        createdBy: {
-          select: {
-            name: true,
-            email: true,
           },
         },
       },
@@ -82,4 +76,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-
