@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const po = await PurchaseOrderService.createPO({
       requestId,
       quoteId,
-      clientId: user.id,
+      clientId: user.userId,
     })
 
     return NextResponse.json({ po }, { status: 201 })

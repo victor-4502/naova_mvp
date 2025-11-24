@@ -20,12 +20,12 @@ export async function POST(request: NextRequest) {
     }
     
     // Procesar email
-    const request = await EmailProcessor.processEmail(body, clientId)
+    const newRequest = await EmailProcessor.processEmail(body, clientId)
     
     return NextResponse.json(
       {
         success: true,
-        requestId: request.id,
+        requestId: newRequest.id,
       },
       { status: 200 }
     )

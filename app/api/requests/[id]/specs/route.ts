@@ -34,7 +34,7 @@ export async function GET(
     }
 
     if (
-      requestRecord.clientId !== user.id &&
+      requestRecord.clientId !== user.userId &&
       user.role !== 'admin_naova' &&
       user.role !== 'operator_naova'
     ) {
@@ -84,7 +84,7 @@ export async function PUT(
     }
 
     if (
-      requestRecord.clientId !== user.id &&
+      requestRecord.clientId !== user.userId &&
       user.role !== 'admin_naova' &&
       user.role !== 'operator_naova'
     ) {

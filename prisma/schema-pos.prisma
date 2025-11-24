@@ -206,6 +206,7 @@ model Request {
   specs             RequestSpec?
   rfq               RFQ?
   purchaseOrder     PurchaseOrder?
+  notifications    Notification[]
   
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -688,6 +689,7 @@ model Requirement {
   unit        String
   fileUrl     String?
   status      String   @default("pending")
+  tender      Tender?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -703,6 +705,7 @@ model Tender {
   status        String   @default("draft")
   startAt       DateTime?
   endAt         DateTime?
+  offers        Offer[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -723,7 +726,6 @@ model Provider {
   
   // Relations
   offers           Offer[]
-  purchaseHistory  PurchaseHistory[] @relation("LegacyPurchaseHistory")
   
   @@index([category])
   @@index([active])
@@ -785,7 +787,7 @@ model AuditLog {
   id        String   @id @default(cuid())
   action    String
   userId    String?
-  user      User     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   metadata  Json?
   ipAddress String?
   createdAt DateTime @default(now())

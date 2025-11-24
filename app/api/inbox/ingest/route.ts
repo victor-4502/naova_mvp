@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Crear request
     const newRequest = await InboxService.createRequest({
       source,
-      clientId: user.id,
+      clientId: user.userId,
       content,
       attachments,
       metadata,

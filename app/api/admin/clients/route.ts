@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
 
     // Get all clients with their profiles
     const clients = await prisma.user.findMany({
-      where: { role: 'client' },
+      where: { role: 'client_enterprise' },
       include: {
         clientProfile: true,
         _count: {
           select: {
-            requirements: true,
+            legacyRequirements: true,
           },
         },
       },
@@ -119,4 +119,5 @@ export async function PATCH(request: NextRequest) {
     )
   }
 }
+
 

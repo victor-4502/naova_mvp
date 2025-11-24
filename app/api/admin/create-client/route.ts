@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword, generateRandomPassword } from '@/lib/auth'
 import { sendWelcomeEmail } from '@/lib/email'
@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const createClientSchema = z.object({
   name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
+  email: z.string().email('Email invÃ¡lido'),
   company: z.string().optional(),
   phone: z.string().optional(),
   plan: z.enum(['trial', 'basic', 'enterprise']).default('trial'),
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const validation = createClientSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Datos inválidos', details: validation.error.errors },
+        { error: 'Datos invÃ¡lidos', details: validation.error.errors },
         { status: 400 }
       )
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         company,
         phone,
         passwordHash,
-        role: 'client',
+        role: 'client_enterprise',
         clientProfile: {
           create: {
             billingPlan: plan,
@@ -117,4 +117,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
 

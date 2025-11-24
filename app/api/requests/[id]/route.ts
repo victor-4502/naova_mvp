@@ -24,7 +24,7 @@ export async function GET(
     }
 
     // Verificar que el request pertenece al usuario
-    if (request.clientId !== user.id && user.role !== 'admin_naova') {
+    if (request.clientId !== user.userId && user.role !== 'admin_naova') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 

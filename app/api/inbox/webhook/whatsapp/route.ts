@@ -20,12 +20,12 @@ export async function POST(request: NextRequest) {
     }
     
     // Procesar mensaje
-    const request = await WhatsAppProcessor.processWebhook(body, clientId)
+    const newRequest = await WhatsAppProcessor.processWebhook(body, clientId)
     
     return NextResponse.json(
       {
         success: true,
-        requestId: request.id,
+        requestId: newRequest.id,
       },
       { status: 200 }
     )

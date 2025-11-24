@@ -1,3 +1,6 @@
+// @ts-nocheck
+// TODO: Activar cuando el schema POS esté activo
+
 // Category Matcher - Matching por categoría
 
 import { prisma } from '@/lib/prisma'

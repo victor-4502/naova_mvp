@@ -25,7 +25,7 @@ export async function GET(
 
     // Verificar permisos
     if (
-      po.clientId !== user.id &&
+      po.clientId !== user.userId &&
       user.role !== 'admin_naova' &&
       user.role !== 'operator_naova'
     ) {

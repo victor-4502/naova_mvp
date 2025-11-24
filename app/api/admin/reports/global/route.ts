@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { subMonths, format } from 'date-fns'
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     // 1. Total clients
     const totalClients = await prisma.user.count({
-      where: { role: 'client', active: true },
+      where: { role: 'client_enterprise', active: true },
     })
 
     // 2. Total volume (from purchase history)
@@ -198,4 +198,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
 

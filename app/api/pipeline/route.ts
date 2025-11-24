@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     // Si es cliente, solo ver sus requests
     const clientId =
-      user.role === 'client_enterprise' ? user.id : undefined
+      user.role === 'client_enterprise' ? user.userId : undefined
 
     const pipeline = await PipelineService.getPipeline(clientId)
 

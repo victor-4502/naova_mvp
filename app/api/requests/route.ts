@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const requests = await InboxService.getClientRequests(user.id)
+    const requests = await InboxService.getClientRequests(user.userId)
 
     return NextResponse.json({ requests }, { status: 200 })
   } catch (error) {
