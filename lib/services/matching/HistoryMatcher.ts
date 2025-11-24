@@ -35,7 +35,7 @@ export class HistoryMatcher {
             mode: 'insensitive',
           },
         }),
-        providerId: {
+        supplierId: {
           not: null,
         },
       },
