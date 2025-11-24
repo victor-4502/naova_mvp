@@ -40,7 +40,7 @@ export class HistoryMatcher {
         },
       },
       include: {
-        provider: {
+        supplier: {
           include: {
             categories: true,
             score: true,
@@ -56,12 +56,12 @@ export class HistoryMatcher {
     const supplierMap = new Map<string, any>()
 
     purchaseHistory.forEach((purchase) => {
-      if (!purchase.providerId || !purchase.provider) return
+      if (!purchase.supplierId || !purchase.supplier) return
 
-      const supplierId = purchase.providerId
+      const supplierId = purchase.supplierId
       if (!supplierMap.has(supplierId)) {
         supplierMap.set(supplierId, {
-          supplier: purchase.provider,
+          supplier: purchase.supplier,
           purchases: [],
           totalVolume: 0,
           totalOrders: 0,
