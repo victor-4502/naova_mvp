@@ -5,6 +5,8 @@ import { sendWelcomeEmail } from '@/lib/email'
 import { z } from 'zod'
 import { UserRole } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 const createClientSchema = z.object({
   name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Email invÃ¡lido'),
