@@ -92,10 +92,21 @@ export async function PUT(
     }
 
     // Procesar spec
+    // Si clientId es null, usar el userId del usuario actual (solo para clientes)
+    const clientId = requestRecord.clientId || 
+      (user.role === 'client_enterprise' ? user.userId : null)
+
+    if (!clientId) {
+      return NextResponse.json(
+        { error: 'Request debe estar asociado a un cliente' },
+        { status: 400 }
+      )
+    }
+
     const result = await SpecEngine.processSpec(
       params.id,
       items,
-      requestRecord.clientId
+      clientId
     )
 
     return NextResponse.json({ result }, { status: 200 })
