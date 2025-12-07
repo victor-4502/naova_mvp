@@ -43,16 +43,19 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    // Obtener información del cliente para matching geográfico
-    const client = await prisma.user.findUnique({
-      where: { id: requestRecord.clientId },
-    })
+    // Obtener información del cliente para matching geográfico (solo si clientId existe)
+    let client = null
+    if (requestRecord.clientId) {
+      client = await prisma.user.findUnique({
+        where: { id: requestRecord.clientId },
+      })
+    }
 
     // Preparar opciones de matching
     const matchingOptions = {
       category: requestRecord.category || undefined,
       subcategory: requestRecord.subcategory || undefined,
-      clientId: requestRecord.clientId,
+      clientId: requestRecord.clientId || undefined,
       clientCity: undefined, // TODO: Obtener de perfil del cliente
       clientState: undefined, // TODO: Obtener de perfil del cliente
       clientCountry: 'México',
