@@ -44,6 +44,12 @@ export default function ClientDashboard() {
         if (response.ok) {
           const userData = await response.json()
           setCurrentUser(userData)
+          
+          // Redirigir admins a su dashboard
+          if (userData.role === 'admin_naova' || userData.role === 'operator_naova') {
+            window.location.href = '/admin/dashboard'
+            return
+          }
         }
       } catch (error) {
         console.error('Error getting current user:', error)
