@@ -45,12 +45,22 @@ export async function POST(
           select: {
             id: true,
             email: true,
+            phone: true,
           },
         },
         messages: {
           where: { direction: 'inbound' },
           orderBy: { createdAt: 'desc' },
-          take: 1,
+          take: 5, // Obtener más mensajes para asegurar que encontremos uno con 'from'
+          select: {
+            id: true,
+            from: true,
+            to: true,
+            source: true,
+            direction: true,
+            content: true,
+            createdAt: true,
+          },
         },
       },
     })
@@ -83,43 +93,77 @@ export async function POST(
     // Obtener información de contacto para enviar la respuesta
     let toContact: string | null = null
     
-    // Obtener el último mensaje entrante para extraer el contacto
-    const lastInboundMessage = requestData.messages[0]
+    // Buscar en todos los mensajes entrantes para encontrar uno con 'from'
+    const messageWithFrom = requestData.messages.find(msg => msg.from)
+    
+    console.log('[Create Message] Messages found:', {
+      total: requestData.messages.length,
+      messagesWithFrom: requestData.messages.filter(msg => msg.from).length,
+      firstMessageFrom: requestData.messages[0]?.from,
+    })
     
     // Para WhatsApp, obtener el número del mensaje original (incluso si no hay cliente)
     if (messageSource === 'whatsapp') {
-      if (lastInboundMessage?.from) {
-        toContact = lastInboundMessage.from
+      if (messageWithFrom?.from) {
+        toContact = messageWithFrom.from
         console.log('[Create Message] WhatsApp number from message:', toContact)
       } else {
-        console.warn('[Create Message] No se encontró número en el mensaje original para WhatsApp')
+        // Intentar obtener del request metadata si está disponible
+        console.warn('[Create Message] No se encontró número en los mensajes, intentando otros métodos')
       }
     } else if (messageSource === 'email') {
       // Para email, obtener del mensaje o del cliente
-      if (lastInboundMessage?.from) {
-        toContact = lastInboundMessage.from
+      if (messageWithFrom?.from) {
+        toContact = messageWithFrom.from
       } else if (requestData.client?.email) {
         toContact = requestData.client.email
       }
     }
     
     // Si no se encontró contacto y hay cliente, intentar obtener del cliente
-    if (!toContact && requestData.client?.email) {
-      toContact = requestData.client.email
-      console.log('[Create Message] Contact from client email:', toContact)
+    if (!toContact) {
+      if (requestData.client?.email) {
+        toContact = requestData.client.email
+        console.log('[Create Message] Contact from client email:', toContact)
+      } else if (requestData.client?.phone) {
+        toContact = requestData.client.phone
+        console.log('[Create Message] Contact from client phone:', toContact)
+      }
+    }
+
+    // Validar que tenemos un contacto antes de crear el mensaje
+    // El campo 'to' tiene restricción NOT NULL en la base de datos
+    if (!toContact) {
+      console.error('[Create Message] No se pudo determinar el contacto para enviar el mensaje', {
+        messageSource,
+        hasClient: !!requestData.client,
+        clientEmail: requestData.client?.email,
+        clientPhone: requestData.client?.phone,
+        totalMessages: requestData.messages.length,
+        messagesFrom: requestData.messages.map(m => ({ id: m.id, from: m.from })),
+      })
+      return NextResponse.json(
+        { 
+          error: 'No se pudo determinar el contacto para enviar el mensaje. Verifica que el request tenga un mensaje entrante con información de contacto.',
+          details: process.env.NODE_ENV === 'development' 
+            ? `Request source: ${requestSource}, Has client: ${!!requestData.client}, Total messages: ${requestData.messages.length}, Messages with 'from': ${requestData.messages.filter(m => m.from).length}`
+            : undefined,
+        },
+        { status: 400 }
+      )
     }
 
     // Obtener el "from" (remitente) - usar el email del admin o un valor por defecto
     const fromContact = user.email || user.name || 'Sistema Naova'
 
-    // Crear el mensaje outbound
+    // Crear el mensaje outbound - asegurarse de que 'to' nunca sea null
     const messageData = {
       requestId: params.requestId,
       source: messageSource,
       direction: 'outbound' as const,
       content: content.trim(),
       from: fromContact, // Campo requerido en la base de datos
-      to: toContact,
+      to: toContact, // Ya validamos que no sea null arriba
       processed: false,
     }
     
