@@ -291,5 +291,73 @@ export class InboxService {
       },
     })
   }
+
+  /**
+   * Agrega un mensaje entrante a un request existente
+   */
+  static async addMessageToRequest(
+    requestId: string,
+    input: {
+      source: RequestSource
+      sourceId?: string
+      content: string
+      metadata?: {
+        from?: string
+        to?: string
+        subject?: string
+        timestamp?: string
+        messageType?: string
+      }
+      attachments?: Array<{
+        filename: string
+        mimeType: string
+        size: number
+        url: string
+      }>
+    }
+  ) {
+    // Crear el mensaje asociado al request existente
+    const message = await prisma.message.create({
+      data: {
+        requestId,
+        source: input.source === 'file' || input.source === 'api' ? 'web' : input.source,
+        sourceId: input.sourceId,
+        direction: 'inbound',
+        content: input.content,
+        ...(input.metadata?.from && { from: input.metadata.from }),
+        ...(input.metadata?.to && {
+          to: Array.isArray(input.metadata.to) ? input.metadata.to.join(', ') : input.metadata.to
+        }),
+        ...(input.metadata?.subject && { subject: input.metadata.subject }),
+        processed: true,
+        processedAt: new Date(),
+        attachments: input.attachments
+          ? {
+              create: input.attachments.map(att => ({
+                filename: att.filename,
+                mimeType: att.mimeType,
+                size: att.size,
+                url: att.url,
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        request: true,
+        attachments: true,
+      },
+    })
+
+    // Actualizar el rawContent del request con el nuevo contenido
+    // (opcional: podemos mantener solo el primero o concatenar)
+    await prisma.request.update({
+      where: { id: requestId },
+      data: {
+        updatedAt: new Date(),
+      },
+    })
+
+    return message
+  }
 }
 
