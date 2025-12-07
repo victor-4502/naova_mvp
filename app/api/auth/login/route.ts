@@ -32,11 +32,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Obtener el rol real de Prisma (no el legacy)
+    let actualRole = user.role
+    if (USE_PRISMA) {
+      const prismaUser = await prisma.user.findUnique({
+        where: { email },
+        select: { role: true }
+      })
+      if (prismaUser) {
+        actualRole = prismaUser.role as string
+      }
+    }
+
     // Generate simple base64 token for edge runtime compatibility
     const tokenData = {
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: actualRole, // Usar el rol real de Prisma
       name: user.company || user.email,
       exp: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 days
     }
@@ -48,7 +60,7 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
-        role: user.role,
+        role: actualRole, // Usar el rol real de Prisma
         company: user.company,
       },
       token,

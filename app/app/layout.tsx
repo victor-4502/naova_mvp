@@ -11,8 +11,16 @@ export default async function AppLayout({
   
   // Verificar si el usuario es admin y redirigir
   const user = await getCurrentUser()
-  if (user && (user.role === 'admin_naova' || user.role === 'operator_naova')) {
-    redirect('/admin/dashboard')
+  if (user) {
+    // Verificar todos los posibles roles de admin
+    const isAdmin = user.role === 'admin_naova' || 
+                   user.role === 'operator_naova' || 
+                   user.role === 'ADMIN' ||
+                   user.email?.includes('admin@naova.com')
+    
+    if (isAdmin) {
+      redirect('/admin/dashboard')
+    }
   }
 
   return (

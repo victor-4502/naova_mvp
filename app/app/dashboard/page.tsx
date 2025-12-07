@@ -45,9 +45,15 @@ export default function ClientDashboard() {
           const userData = await response.json()
           setCurrentUser(userData)
           
-          // Redirigir admins a su dashboard
-          if (userData.role === 'admin_naova' || userData.role === 'operator_naova') {
-            window.location.href = '/admin/dashboard'
+          // Redirigir admins a su dashboard (verificar todos los posibles roles de admin)
+          const isAdmin = userData.role === 'admin_naova' || 
+                         userData.role === 'operator_naova' || 
+                         userData.role === 'ADMIN' ||
+                         userData.email?.includes('admin@naova.com')
+          
+          if (isAdmin) {
+            console.log('Admin detected, redirecting to /admin/dashboard')
+            window.location.replace('/admin/dashboard')
             return
           }
         }
