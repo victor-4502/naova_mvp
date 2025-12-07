@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { WhatsAppService } from '@/lib/services/whatsapp/WhatsAppService'
+import { EmailService } from '@/lib/services/email/EmailService'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +60,8 @@ export async function POST(
             source: true,
             direction: true,
             content: true,
+            subject: true,
+            sourceId: true,
             createdAt: true,
           },
         },
@@ -228,6 +231,53 @@ export async function POST(
       }
     }
 
+    // Si el mensaje es de Email, intentar enviarlo realmente
+    let emailSendResult: { success: boolean; messageId?: string; error?: string } | null = null
+    if (messageSource === 'email' && toContact) {
+      try {
+        console.log('[Create Message] Attempting to send email to:', toContact)
+        
+        // Obtener información del email original para threading
+        const originalMessage = requestData.messages.find(m => m.direction === 'inbound')
+        const originalSubject = originalMessage?.subject || `Requerimiento ${params.requestId}`
+        
+        // Enviar email como respuesta (con threading si hay messageId original)
+        const result = await EmailService.sendReply(
+          toContact,
+          originalSubject,
+          content.trim(),
+          originalMessage?.sourceId || undefined
+        )
+
+        emailSendResult = {
+          success: result.success,
+          messageId: result.messageId,
+          error: result.error,
+        }
+
+        // Actualizar el mensaje con el resultado
+        if (result.success && result.messageId) {
+          await prisma.message.update({
+            where: { id: newMessage.id },
+            data: {
+              processed: true,
+              processedAt: new Date(),
+              sourceId: result.messageId, // Guardar el ID del mensaje de email
+            },
+          })
+          console.log('[Create Message] Email sent and updated:', result.messageId)
+        } else {
+          console.warn('[Create Message] Email failed to send:', result.error)
+        }
+      } catch (error) {
+        console.error('[Create Message] Error sending email:', error)
+        emailSendResult = {
+          success: false,
+          error: error instanceof Error ? error.message : 'Error desconocido',
+        }
+      }
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -238,13 +288,20 @@ export async function POST(
           content: newMessage.content,
           to: newMessage.to,
           createdAt: newMessage.createdAt.toISOString(),
-          processed: whatsappSendResult?.success || newMessage.processed,
+          processed: whatsappSendResult?.success || emailSendResult?.success || newMessage.processed,
         },
         ...(whatsappSendResult && {
           whatsapp: {
             sent: whatsappSendResult.success,
             messageId: whatsappSendResult.messageId,
             error: whatsappSendResult.error,
+          },
+        }),
+        ...(emailSendResult && {
+          email: {
+            sent: emailSendResult.success,
+            messageId: emailSendResult.messageId,
+            error: emailSendResult.error,
           },
         }),
       },
