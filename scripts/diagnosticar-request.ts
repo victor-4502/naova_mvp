@@ -87,12 +87,20 @@ async function diagnosticarRequest(requestId?: string) {
       }
     }
 
+    // Definir variables fuera del bloque condicional para que estén disponibles después
+    const outboundMessages = request.messages.filter((m) => m.direction === 'outbound')
+    let missingFields: string[] = []
+    let normalizedRules: any = null
+
     if (!normalized || Object.keys(normalized).length === 0) {
       console.log('⚠️  normalizedContent está vacío o es null')
     } else {
       console.log('✅ normalizedContent existe')
 
       const rules = normalized.rules || {}
+      normalizedRules = rules
+      missingFields = rules.missingFields || []
+      
       console.log('\n📋 REGLAS:')
       console.log(`  • categoryRuleId: ${rules.categoryRuleId || 'N/A'}`)
       console.log(`  • autoReplyEnabled: ${rules.autoReplyEnabled ?? true} (default: true)`)
@@ -111,7 +119,6 @@ async function diagnosticarRequest(requestId?: string) {
 
       const autoReplyEnabled = typeof rules.autoReplyEnabled === 'boolean' ? rules.autoReplyEnabled : true
       const categoryRuleId = rules.categoryRuleId
-      const missingFields = rules.missingFields || []
       const completeness = rules.completeness
 
       if (!autoReplyEnabled) {
@@ -133,7 +140,6 @@ async function diagnosticarRequest(requestId?: string) {
       }
 
       // Verificar si hay mensaje outbound pendiente
-      const outboundMessages = request.messages.filter((m) => m.direction === 'outbound')
       const processedOutbound = outboundMessages.filter((m) => m.processed)
 
       if (outboundMessages.length > 0) {
@@ -155,7 +161,7 @@ async function diagnosticarRequest(requestId?: string) {
 
     // Sugerencias
     console.log('\n💡 SUGERENCIAS:')
-    if (!normalized || !normalized.rules || !normalized.rules.categoryRuleId) {
+    if (!normalized || !normalizedRules || !normalizedRules.categoryRuleId) {
       console.log('   • Agrega más palabras clave relacionadas con categorías en el contenido')
       console.log('   • Revisa CATEGORY_MAPPINGS en lib/utils/constants.ts')
     }
