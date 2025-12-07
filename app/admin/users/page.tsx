@@ -26,7 +26,7 @@ interface User {
   id: string
   name: string
   email: string
-  role: 'ADMIN' | 'CLIENT'
+  role: 'admin_naova' | 'operator_naova' | 'client_enterprise'
   isActive: boolean
   company?: string
   phone?: string
@@ -43,7 +43,7 @@ export default function UserManagement() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterRole, setFilterRole] = useState<'ALL' | 'ADMIN' | 'CLIENT'>('ALL')
+  const [filterRole, setFilterRole] = useState<'ALL' | 'admin_naova' | 'operator_naova' | 'client_enterprise'>('ALL')
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
   
   // Estados para el formulario de creación
@@ -51,7 +51,7 @@ export default function UserManagement() {
     name: '',
     email: '',
     password: '',
-    role: 'CLIENT' as 'ADMIN' | 'CLIENT',
+    role: 'client_enterprise' as 'admin_naova' | 'operator_naova' | 'client_enterprise',
     company: '',
     phone: ''
   })
@@ -62,7 +62,7 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState({
     name: '',
     email: '',
-    role: 'CLIENT' as 'ADMIN' | 'CLIENT',
+    role: 'client_enterprise' as 'admin_naova' | 'operator_naova' | 'client_enterprise',
     company: '',
     phone: '',
     isActive: true
@@ -97,7 +97,7 @@ export default function UserManagement() {
       id: 'admin-001',
       name: 'Admin Principal',
       email: 'admin@naova.com',
-      role: 'ADMIN',
+      role: 'admin_naova',
       isActive: true,
       company: 'Naova Corp',
       phone: '+1 (555) 123-4567',
@@ -110,7 +110,7 @@ export default function UserManagement() {
       id: 'client-001',
       name: 'Industrias ABC',
       email: 'juan@abc.com',
-      role: 'CLIENT',
+      role: 'client_enterprise',
       isActive: true,
       company: 'Industrias ABC S.A.',
       phone: '+1 (555) 234-5678',
@@ -123,7 +123,7 @@ export default function UserManagement() {
       id: 'client-002',
       name: 'Construcciones XYZ',
       email: 'maria@xyz.com',
-      role: 'CLIENT',
+      role: 'client_enterprise',
       isActive: true,
       company: 'Construcciones XYZ Ltda.',
       phone: '+1 (555) 345-6789',
@@ -136,7 +136,7 @@ export default function UserManagement() {
       id: 'client-003',
       name: 'Metalúrgica 123',
       email: 'carlos@metal123.com',
-      role: 'CLIENT',
+      role: 'client_enterprise',
       isActive: false,
       company: 'Metalúrgica 123 S.A.',
       phone: '+1 (555) 456-7890',
@@ -149,7 +149,7 @@ export default function UserManagement() {
       id: 'client-004',
       name: 'Fábrica DEF',
       email: 'ana@fabrica.com',
-      role: 'CLIENT',
+      role: 'client_enterprise',
       isActive: true,
       company: 'Fábrica DEF S.A.',
       phone: '+1 (555) 567-8901',
@@ -199,7 +199,7 @@ export default function UserManagement() {
       name: '',
       email: '',
       password: '',
-      role: 'CLIENT',
+      role: 'client_enterprise',
       company: '',
       phone: ''
     })
@@ -255,7 +255,7 @@ export default function UserManagement() {
         name: '',
         email: '',
         password: '',
-        role: 'CLIENT',
+        role: 'client_enterprise',
         company: '',
         phone: ''
       })
@@ -661,7 +661,7 @@ export default function UserManagement() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Clientes</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {users.filter(u => u.role === 'CLIENT').length}
+                  {users.filter(u => u.role === 'client_enterprise').length}
                 </p>
               </div>
             </div>
@@ -697,8 +697,9 @@ export default function UserManagement() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="ALL">Todos los roles</option>
-                <option value="ADMIN">Administradores</option>
-                <option value="CLIENT">Clientes</option>
+                <option value="admin_naova">Administradores Naova</option>
+                <option value="operator_naova">Operadores Naova</option>
+                <option value="client_enterprise">Clientes</option>
               </select>
             </div>
 
@@ -905,8 +906,9 @@ export default function UserManagement() {
                   onChange={(e) => handleNewUserChange('role', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="CLIENT">Cliente</option>
-                  <option value="ADMIN">Administrador</option>
+                  <option value="client_enterprise">Cliente</option>
+                  <option value="admin_naova">Administrador Naova</option>
+                  <option value="operator_naova">Operador Naova</option>
                 </select>
               </div>
               <div>
@@ -997,8 +999,9 @@ export default function UserManagement() {
                   onChange={(e) => handleEditUserChange('role', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="CLIENT">Cliente</option>
-                  <option value="ADMIN">Administrador</option>
+                  <option value="client_enterprise">Cliente</option>
+                  <option value="admin_naova">Administrador Naova</option>
+                  <option value="operator_naova">Operador Naova</option>
                 </select>
               </div>
               <div>
@@ -1112,7 +1115,7 @@ export default function UserManagement() {
               </div>
 
               {/* Gestión de Contactos - Solo para clientes */}
-              {editingUser.role === 'CLIENT' && (
+              {editingUser.role === 'client_enterprise' && (
                 <div className="border-t pt-4 mt-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">Contactos del Cliente</h4>
                   
