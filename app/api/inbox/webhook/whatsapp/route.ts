@@ -55,6 +55,23 @@ export async function POST(request: NextRequest) {
                 content = `${message.type} recibido` // Por lo menos algún contenido
               }
               
+              // Validar que tenemos contenido antes de procesar
+              if (!content || content.trim().length === 0) {
+                console.warn('[WhatsApp Webhook] Mensaje sin contenido, saltando:', {
+                  messageId,
+                  from,
+                  type: message.type
+                })
+                continue // Saltar este mensaje
+              }
+              
+              console.log('[WhatsApp Webhook] Procesando mensaje:', {
+                messageId,
+                from,
+                content: content.substring(0, 50),
+                type: messageType
+              })
+              
               // Procesar mensaje con formato esperado por WhatsAppProcessor
               const webhookPayload = {
                 from,
