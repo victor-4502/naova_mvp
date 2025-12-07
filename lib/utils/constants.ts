@@ -140,10 +140,19 @@ export const UNIT_NORMALIZATION: Record<string, string> = {
 // Category mappings
 export const CATEGORY_MAPPINGS: Record<string, string[]> = {
   'materiales': ['materia prima', 'raw materials', 'materials'],
-  'herramientas': ['tools', 'equipos', 'equipment'],
+  'herramientas': [
+    'tools', 'equipos', 'equipment',
+    'tornillo', 'tornillos', 'tuerca', 'tuercas', 'arandela', 'arandelas',
+    'perno', 'pernos', 'herramienta', 'herramientas'
+  ],
   'seguridad': ['safety', 'epi', 'ppe', 'equipos de seguridad'],
   'consumibles': ['consumables', 'supplies', 'insumos'],
   'refacciones': ['spare parts', 'repuestos', 'parts'],
-  'servicios': ['services', 'servicios'],
+  'servicios': [
+    'services', 'servicios',
+    'mantenimiento', 'servicio de mantenimiento',
+    'reparar', 'reparación', 'revisión', 'instalación',
+    'servicio técnico', 'técnico'
+  ],
 }
 

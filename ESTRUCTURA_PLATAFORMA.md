@@ -91,12 +91,13 @@ Cuando un usuario inicia sesión en `/login`, el sistema verifica sus credencial
   - Ahorros generados
 
 - **Acciones rápidas:**
-  1. **Ver Reportes de Clientes** → `/admin/clients`
-  2. **Gestionar Proveedores** → `/admin/providers`
-  3. **Ver Reportes** → `/admin/reports`
-  4. **Gestionar Usuarios** → `/admin/users`
-  5. **Gestionar Licitaciones** → `/admin/tenders`
-  6. **Historial de Auditoría** → `/admin/audit`
+  1. **Ver Requests / Inbox** → `/admin/requests`
+  2. **Ver Reportes de Clientes** → `/admin/clients`
+  3. **Gestionar Proveedores** → `/admin/providers`
+  4. **Ver Reportes** → `/admin/reports`
+  5. **Gestionar Usuarios** → `/admin/users`
+  6. **Gestionar Licitaciones** → `/admin/tenders`
+  7. **Historial de Auditoría** → `/admin/audit`
 
 - **Licitaciones en Proceso:**
   - Lista de licitaciones pendientes de activación
@@ -165,6 +166,33 @@ Cuando un usuario inicia sesión en `/login`, el sistema verifica sus credencial
 - Ver historial de acciones del sistema
 - Rastrear cambios y modificaciones
 - Logs de actividad
+
+### Inbox / Requests (`/admin/requests`)
+
+**Ubicación:** `app/admin/requests/page.tsx`
+
+**Funcionalidades:**
+- Ver todos los requests entrantes de todos los clientes
+- Filtrar por fuente (WhatsApp, Email, Plataforma, etc.)
+- Ver detalles de cada request:
+  - Contenido original
+  - Cliente asociado
+  - Estado y pipeline stage
+  - Categoría y urgencia
+  - Análisis de completitud
+  - Campos faltantes
+  - Mensajes de seguimiento sugeridos (auto-respuesta)
+- Activar/desactivar auto-respuesta por request
+- Ver mensajes de seguimiento generados automáticamente
+- Gestionar requests incompletos o que requieren más información
+
+**Fuentes de requests:**
+- WhatsApp (mensajes entrantes)
+- Email (correos entrantes)
+- Plataforma web (formularios)
+- Chat (en vivo)
+- Archivos (carga de documentos)
+- API (integración externa)
 
 ---
 
@@ -280,6 +308,7 @@ Modelos principales:
 
 ### Administrador (requiere autenticación):
 - `/admin/dashboard` - Dashboard administrativo
+- `/admin/requests` - Inbox / Requests entrantes
 - `/admin/tenders` - Gestión de licitaciones
 - `/admin/users` - Gestión de usuarios
 - `/admin/clients` - Gestión de clientes

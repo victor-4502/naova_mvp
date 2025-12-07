@@ -9,10 +9,21 @@ export const dynamic = 'force-dynamic'
 
 const createClientSchema = z.object({
   name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
-  email: z.string().email('Email invÃ¡lido'),
+  email: z.string().email('Email inválido'),
   company: z.string().optional(),
   phone: z.string().optional(),
   plan: z.enum(['trial', 'basic', 'enterprise']).default('trial'),
+  // Múltiples contactos adicionales
+  additionalEmails: z.array(z.object({
+    email: z.string().email(),
+    label: z.string().optional(),
+    isPrimary: z.boolean().default(false),
+  })).optional(),
+  additionalPhones: z.array(z.object({
+    phone: z.string(),
+    label: z.string().optional(),
+    isPrimary: z.boolean().default(false),
+  })).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -37,7 +48,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { name, email, company, phone, plan } = validation.data
+    const { name, email, company, phone, plan, additionalEmails, additionalPhones } = validation.data
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -59,7 +70,36 @@ export async function POST(request: NextRequest) {
     const trialEndsAt = new Date()
     trialEndsAt.setDate(trialEndsAt.getDate() + 30)
 
-    // Create user with client profile
+    // Preparar contactos adicionales
+    const clientContacts = []
+    
+    // Agregar emails adicionales
+    if (additionalEmails && additionalEmails.length > 0) {
+      for (const emailContact of additionalEmails) {
+        clientContacts.push({
+          type: 'email',
+          value: emailContact.email,
+          label: emailContact.label || 'Email adicional',
+          isPrimary: emailContact.isPrimary,
+          verified: false,
+        })
+      }
+    }
+    
+    // Agregar teléfonos adicionales
+    if (additionalPhones && additionalPhones.length > 0) {
+      for (const phoneContact of additionalPhones) {
+        clientContacts.push({
+          type: 'phone',
+          value: phoneContact.phone,
+          label: phoneContact.label || 'Teléfono adicional',
+          isPrimary: phoneContact.isPrimary,
+          verified: false,
+        })
+      }
+    }
+
+    // Create user with client profile and contacts
     const newClient = await prisma.user.create({
       data: {
         name,
@@ -74,9 +114,13 @@ export async function POST(request: NextRequest) {
             trialEndsAt: plan === 'trial' ? trialEndsAt : null,
           },
         },
+        clientContacts: clientContacts.length > 0 ? {
+          create: clientContacts,
+        } : undefined,
       },
       include: {
         clientProfile: true,
+        clientContacts: true,
       },
     })
 
@@ -107,6 +151,7 @@ export async function POST(request: NextRequest) {
           company: newClient.company,
           phone: newClient.phone,
           plan: newClient.clientProfile?.billingPlan,
+          contacts: newClient.clientContacts || [],
         },
         temporaryPassword, // Return for admin to share if email fails
       },

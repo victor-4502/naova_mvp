@@ -1,5 +1,6 @@
 // WhatsApp Processor - Procesa mensajes de WhatsApp (stub para integración futura)
 
+import { prisma } from '@/lib/prisma'
 import type { RequestSource } from '@/lib/types/request'
 import { InboxService, type CreateRequestInput } from './InboxService'
 
@@ -35,7 +36,7 @@ export class WhatsAppProcessor {
    */
   static async processWebhook(
     payload: WhatsAppWebhookPayload,
-    clientId: string
+    clientId?: string  // Opcional: puede ser undefined si no se identifica cliente
   ) {
     // Extraer contenido del mensaje
     let content = ''
@@ -87,21 +88,43 @@ export class WhatsAppProcessor {
 
   /**
    * Identifica el cliente desde un número de WhatsApp
-   * TODO: Implementar lógica de identificación
+   * Busca en teléfono principal y en contactos adicionales
    */
   static async identifyClient(whatsappNumber: string): Promise<string | null> {
-    // Por ahora, buscar por número de teléfono en usuarios
-    const user = await prisma.user.findFirst({
+    // Normalizar número (quitar espacios, +, etc.)
+    const normalizedNumber = whatsappNumber.replace(/[\s\+\-\(\)]/g, '')
+    
+    // Primero buscar por teléfono principal
+    const userByPhone = await prisma.user.findFirst({
       where: {
-        phone: whatsappNumber,
-        role: 'client_enterprise',
+        phone: {
+          contains: normalizedNumber,
+        },
       },
     })
     
-    return user?.id || null
+    if (userByPhone && userByPhone.role === 'client_enterprise') {
+      return userByPhone.id
+    }
+    
+    // Si no se encuentra, buscar en contactos adicionales
+    const contact = await prisma.clientContact.findFirst({
+      where: {
+        type: 'phone',
+        value: {
+          contains: normalizedNumber,
+        },
+      },
+      include: {
+        user: true,
+      },
+    })
+    
+    if (contact && contact.user.role === 'client_enterprise') {
+      return contact.user.id
+    }
+    
+    return null
   }
 }
-
-// Importar prisma
-import { prisma } from '@/lib/prisma'
 

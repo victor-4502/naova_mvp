@@ -152,6 +152,7 @@ model User {
   
   // Relations
   clientProfile    ClientProfile?
+  clientContacts   ClientContact[]  // Múltiples emails y teléfonos
   requests         Request[]
   purchaseOrders   PurchaseOrder[]
   notifications    Notification[]
@@ -176,6 +177,24 @@ model ClientProfile {
   @@index([billingPlan])
 }
 
+// Contactos adicionales del cliente (emails y teléfonos)
+model ClientContact {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // "email" | "phone"
+  value       String   // Email o número de teléfono
+  label       String?  // "Personal", "Trabajo", "WhatsApp", etc.
+  isPrimary   Boolean  @default(false)  // Si es el contacto principal
+  verified    Boolean  @default(false)   // Si está verificado
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([userId, type, value])  // Un cliente no puede tener el mismo contacto duplicado
+  @@index([userId])
+  @@index([type, value])  // Para búsquedas rápidas
+}
+
 // ============================================
 // REQUEST MODELS (Inbox Inteligente)
 // ============================================
@@ -184,8 +203,8 @@ model Request {
   id                String         @id @default(cuid())
   source            RequestSource
   sourceId          String?       // ID del mensaje original
-  clientId          String
-  client            User           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId          String?       // Nullable: puede ser request sin cliente asignado
+  client            User?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
   
   // Estado del pipeline
   status            RequestStatus  @default(new_request)

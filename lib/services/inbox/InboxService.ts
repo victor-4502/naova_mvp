@@ -5,11 +5,13 @@ import { ContentExtractor, type ExtractedContent } from './ContentExtractor'
 import { ClassificationService, type ClassificationResult } from './ClassificationService'
 import type { RequestSource, RequestStatus, PipelineStage } from '@/lib/types/request'
 import { REQUEST_STATUSES, PIPELINE_STAGES } from '@/lib/utils/constants'
+import { RequestRuleEngine } from './RequestRuleEngine'
+import { AutoReplyService } from './AutoReplyService'
 
 export interface CreateRequestInput {
   source: RequestSource
   sourceId?: string
-  clientId: string
+  clientId?: string  // Opcional: puede ser null si no se identifica cliente
   content: string
   attachments?: Array<{
     filename: string
@@ -24,7 +26,7 @@ export interface RequestWithDetails {
   id: string
   source: RequestSource
   sourceId?: string
-  clientId: string
+  clientId?: string  // Opcional: puede ser null
   status: RequestStatus
   pipelineStage: PipelineStage
   rawContent: string
@@ -64,59 +66,100 @@ export class InboxService {
       input.source,
       input.metadata
     )
+
+    // Analizar reglas por categoría para determinar campos faltantes
+    // Pasar el contenido original para búsqueda directa de keywords si no se encuentra categoría
+    const ruleAnalysis = RequestRuleEngine.analyze(extracted, classification, input.content)
     
     // Determinar estado inicial
     const { status, pipelineStage } = this.determineInitialStatus(
       extracted,
-      classification
+      classification,
+      ruleAnalysis.completeness
     )
     
     // Crear request en la base de datos
+    // Construir el objeto data, incluyendo sourceId solo si está definido
+    const requestData: any = {
+      source: input.source,
+      clientId: input.clientId,
+      status,
+      pipelineStage,
+      rawContent: input.content,
+      normalizedContent: {
+        extracted,
+        classification,
+        rules: {
+          categoryRuleId: ruleAnalysis.categoryRule?.id || null,
+          presentFields: ruleAnalysis.presentFields,
+          missingFields: ruleAnalysis.missingFields,
+          completeness: ruleAnalysis.completeness,
+          // Por defecto activamos la auto-respuesta; se puede cambiar en /admin/requests
+          autoReplyEnabled: true,
+        },
+      } as any,
+      category: classification.category || undefined,
+      subcategory: classification.subcategory || undefined,
+      urgency: classification.urgency,
+      messages: {
+        create: {
+          source: input.source === 'file' || input.source === 'api' ? 'web' : input.source,
+          sourceId: input.sourceId,
+          direction: 'inbound',
+          content: input.content,
+          // Agregar campos from, to, subject desde metadata si están disponibles
+          ...(input.metadata?.from && { from: input.metadata.from }),
+          ...(input.metadata?.fromName && !input.metadata?.from && { from: input.metadata.fromName }),
+          ...(input.metadata?.to && {
+            to: Array.isArray(input.metadata.to) ? input.metadata.to.join(', ') : input.metadata.to
+          }),
+          ...(input.metadata?.subject && { subject: input.metadata.subject }),
+          processed: true,
+          processedAt: new Date(),
+        },
+      },
+      attachments: input.attachments
+        ? {
+            create: input.attachments.map(att => ({
+              filename: att.filename,
+              mimeType: att.mimeType,
+              size: att.size,
+              url: att.url,
+            })),
+          }
+        : undefined,
+    }
+
+    // Agregar sourceId solo si está definido (para evitar errores si la columna no existe en la BD)
+    if (input.sourceId) {
+      requestData.sourceId = input.sourceId
+    }
+
+    // Construir el include de forma condicional para evitar errores si la tabla Attachment no existe
+    const includeOptions: any = {
+      messages: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 10,
+      },
+    }
+
+    // Solo incluir attachments si hay attachments en el input
+    if (input.attachments && input.attachments.length > 0) {
+      includeOptions.attachments = true
+    }
+
     const request = await prisma.request.create({
-      data: {
-        source: input.source,
-        sourceId: input.sourceId,
-        clientId: input.clientId,
-        status,
-        pipelineStage,
-        rawContent: input.content,
-        normalizedContent: {
-          extracted,
-          classification,
-        } as any,
-        category: classification.category || undefined,
-        subcategory: classification.subcategory || undefined,
-        urgency: classification.urgency,
-        messages: {
-          create: {
-            source: input.source === 'file' || input.source === 'api' ? 'web' : input.source,
-            sourceId: input.sourceId,
-            direction: 'inbound',
-            content: input.content,
-            processed: true,
-            processedAt: new Date(),
-          },
-        },
-        attachments: input.attachments
-          ? {
-              create: input.attachments.map(att => ({
-                filename: att.filename,
-                mimeType: att.mimeType,
-                size: att.size,
-                url: att.url,
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-        attachments: true,
-      },
+      data: requestData,
+      include: includeOptions,
     })
-    
+
+    // Intentar generar una respuesta automática si el request quedó incompleto
+    try {
+      await AutoReplyService.maybeSendAutoReply(request)
+    } catch (error) {
+      console.warn('No se pudo generar respuesta automática para el request:', error)
+    }
+
     return request
   }
 
@@ -125,15 +168,24 @@ export class InboxService {
    */
   private static determineInitialStatus(
     extracted: ExtractedContent,
-    classification: ClassificationResult
+    classification: ClassificationResult,
+    rulesCompleteness: number
   ): { status: RequestStatus; pipelineStage: PipelineStage } {
     // Si no hay información suficiente, marcar como incompleto
     const hasCategory = !!classification.category
     const hasItems = extracted.items.length > 0
     const hasQuantities = extracted.quantities.length > 0
-    
-    const isComplete = hasCategory && (hasItems || hasQuantities)
-    
+
+    // Usar reglas si tenemos completitud calculada (>0 indica que había alguna regla aplicable)
+    let isComplete: boolean
+    if (rulesCompleteness > 0) {
+      // Por ahora consideramos "suficientemente completo" si tiene al menos 80% de campos requeridos
+      isComplete = rulesCompleteness >= 0.8
+    } else {
+      // Fallback simple anterior
+      isComplete = hasCategory && (hasItems || hasQuantities)
+    }
+
     if (!isComplete) {
       return {
         status: REQUEST_STATUSES.INCOMPLETE_INFORMATION,
@@ -195,7 +247,7 @@ export class InboxService {
       id: request.id,
       source: request.source as RequestSource,
       sourceId: request.sourceId || undefined,
-      clientId: request.clientId,
+      clientId: request.clientId || undefined,
       status: request.status as RequestStatus,
       pipelineStage: request.pipelineStage as PipelineStage,
       rawContent: request.rawContent,

@@ -37,7 +37,7 @@ function LoginForm() {
       console.log('Login response:', data) // Debug log
 
       if (!response.ok) {
-        setError(data.error || 'Error al iniciar sesi├│n')
+        setError(data.error || 'Error al iniciar sesión')
         return
       }
 
@@ -51,7 +51,7 @@ function LoginForm() {
         window.location.href = '/app/dashboard'
       }
     } catch (err) {
-      setError('Error de conexi├│n. Intenta nuevamente.')
+      setError('Error de conexión. Intenta nuevamente.')
     } finally {
       setLoading(false)
     }
@@ -81,7 +81,7 @@ function LoginForm() {
             </h1>
           </Link>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Iniciar Sesi├│n
+            Iniciar Sesión
           </h2>
           <p className="mt-2 text-sm text-gray-800">
             Accede a tu cuenta de Naova
@@ -133,7 +133,7 @@ function LoginForm() {
             {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-900">
-                Contrase├▒a
+                Contraseña
               </label>
               <div className="mt-1 relative">
                 <input
@@ -173,12 +173,12 @@ function LoginForm() {
                 {loading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Iniciando sesi├│n...
+                    Iniciando sesión...
                   </div>
                 ) : (
                   <div className="flex items-center">
                     <LogIn className="h-5 w-5 mr-2" />
-                    Iniciar Sesi├│n
+                    Iniciar Sesión
                   </div>
                 )}
               </motion.button>
@@ -193,7 +193,7 @@ function LoginForm() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white text-gray-600">
-                  ┬┐No tienes cuenta?
+                  ¿No tienes cuenta?
                 </span>
               </div>
             </div>
@@ -208,7 +208,7 @@ function LoginForm() {
                   whileTap={{ scale: 0.98 }}
                   className="text-primary hover:text-purple-700 font-medium"
                 >
-                  Contacta a ventas para crear tu cuenta ΓåÆ
+                  Contacta a ventas para crear tu cuenta →
                 </motion.button>
               </Link>
             </div>
@@ -219,7 +219,7 @@ function LoginForm() {
         <div className="text-center">
           <Link href="/">
             <span className="text-sm text-gray-800 hover:text-primary cursor-pointer">
-              ΓåÉ Volver al inicio
+              ← Volver al inicio
             </span>
           </Link>
         </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Users, DollarSign, Gavel, TrendingUp, LogOut, Clock, CheckCircle } from 'lucide-react'
+import { Users, DollarSign, Gavel, TrendingUp, LogOut, Clock, CheckCircle, Inbox } from 'lucide-react'
 import Link from 'next/link'
 import { appStore, type Tender } from '@/lib/store'
 
@@ -164,6 +164,16 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link href="/admin/requests">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-teal-500 text-white px-4 py-3 rounded-lg font-medium hover:bg-teal-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Inbox className="h-5 w-5" />
+                  Ver Requests / Inbox
+                </motion.button>
+              </Link>
               <Link href="/admin/clients">
                 <motion.button
                   whileHover={{ scale: 1.02 }}

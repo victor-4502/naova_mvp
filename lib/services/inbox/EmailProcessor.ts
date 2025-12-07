@@ -1,5 +1,6 @@
-// Email Processor - Procesa emails entrantes (stub para integración futura)
+// Email Processor - Procesa emails entrantes
 
+import { prisma } from '@/lib/prisma'
 import type { RequestSource } from '@/lib/types/request'
 import { InboxService, type CreateRequestInput } from './InboxService'
 
@@ -12,58 +13,46 @@ export interface EmailWebhookPayload {
   subject: string
   text: string
   html?: string
+  messageId: string
+  timestamp: string
   attachments?: Array<{
     filename: string
     mimeType: string
     size: number
-    content: string // Base64
+    url: string
   }>
-  messageId: string
-  timestamp: string
 }
 
 export class EmailProcessor {
   /**
-   * Procesa un email entrante
+   * Procesa un email entrante desde el webhook
    */
   static async processEmail(
     payload: EmailWebhookPayload,
-    clientId: string
+    clientId?: string  // Opcional: puede ser undefined si no se identifica cliente
   ) {
-    // Extraer contenido (preferir texto plano, fallback a HTML)
-    let content = payload.text || ''
+    // Extraer contenido del email (preferir texto plano, luego HTML)
+    let content = payload.text || payload.html || ''
     
-    if (!content && payload.html) {
-      // TODO: Convertir HTML a texto plano
-      content = payload.html.replace(/<[^>]*>/g, ' ').trim()
+    // Si hay HTML, limpiarlo un poco para extraer texto
+    if (!payload.text && payload.html) {
+      // Remover tags HTML básicos (puedes mejorar esto con una librería)
+      content = payload.html
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
     }
     
-    // Procesar attachments
-    const attachments: CreateRequestInput['attachments'] = []
-    
-    if (payload.attachments) {
-      for (const att of payload.attachments) {
-        // TODO: Subir attachment a storage y obtener URL
-        attachments.push({
-          filename: att.filename,
-          mimeType: att.mimeType,
-          size: att.size,
-          url: '', // TODO: URL del storage
-        })
-      }
-    }
-    
-    if (!content) {
-      throw new Error('No se pudo extraer contenido del email')
-    }
+    // Combinar subject y body para análisis completo
+    const fullContent = payload.subject ? `${payload.subject}\n\n${content}` : content
     
     // Crear request
     const request = await InboxService.createRequest({
       source: 'email',
       sourceId: payload.messageId,
       clientId,
-      content: `${payload.subject}\n\n${content}`,
-      attachments: attachments.length > 0 ? attachments : undefined,
+      content: fullContent,
+      attachments: payload.attachments,
       metadata: {
         from: payload.from.email,
         fromName: payload.from.name,
@@ -78,19 +67,45 @@ export class EmailProcessor {
 
   /**
    * Identifica el cliente desde un email
+   * Busca en email principal y en contactos adicionales
    */
   static async identifyClient(email: string): Promise<string | null> {
-    const user = await prisma.user.findUnique({
+    // Normalizar email (minúsculas, trim)
+    const normalizedEmail = email.toLowerCase().trim()
+    
+    // Primero buscar por email principal
+    const userByEmail = await prisma.user.findFirst({
       where: {
-        email,
-        role: 'client_enterprise',
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
       },
     })
     
-    return user?.id || null
+    if (userByEmail && userByEmail.role === 'client_enterprise') {
+      return userByEmail.id
+    }
+    
+    // Si no se encuentra, buscar en contactos adicionales
+    const contact = await prisma.clientContact.findFirst({
+      where: {
+        type: 'email',
+        value: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
+      include: {
+        user: true,
+      },
+    })
+    
+    if (contact && contact.user.role === 'client_enterprise') {
+      return contact.user.id
+    }
+    
+    return null
   }
 }
-
-// Importar prisma
-import { prisma } from '@/lib/prisma'
 

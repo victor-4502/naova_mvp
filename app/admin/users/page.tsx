@@ -17,7 +17,8 @@ import {
   UserX,
   Mail,
   Phone,
-  Building
+  Building,
+  X
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -56,6 +57,39 @@ export default function UserManagement() {
   })
   const [creating, setCreating] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+
+  // Estados para el formulario de edición
+  const [editingUser, setEditingUser] = useState({
+    name: '',
+    email: '',
+    role: 'CLIENT' as 'ADMIN' | 'CLIENT',
+    company: '',
+    phone: '',
+    isActive: true
+  })
+  const [updating, setUpdating] = useState(false)
+  const [showResetPassword, setShowResetPassword] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [generatedPassword, setGeneratedPassword] = useState('')
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [showPasswordField, setShowPasswordField] = useState(false)
+
+  // Estados para gestión de contactos
+  const [userContacts, setUserContacts] = useState<Array<{
+    id: string
+    type: 'email' | 'phone'
+    value: string
+    label?: string
+    isPrimary: boolean
+    verified: boolean
+  }>>([])
+  const [showContactModal, setShowContactModal] = useState(false)
+  const [contactType, setContactType] = useState<'email' | 'phone'>('email')
+  const [newContact, setNewContact] = useState({
+    value: '',
+    label: '',
+    isPrimary: false
+  })
 
   // Datos simulados para desarrollo
   const mockUsers: User[] = [
@@ -245,7 +279,231 @@ export default function UserManagement() {
 
   const handleEditUser = async (user: User) => {
     setSelectedUser(user)
+    setEditingUser({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      company: user.company || '',
+      phone: user.phone || '',
+      isActive: user.isActive
+    })
+    // Cargar contactos del usuario
+    await loadUserContacts(user.id)
     setShowEditModal(true)
+  }
+
+  const loadUserContacts = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/admin/clients/${userId}/contacts`, {
+        credentials: 'include',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setUserContacts(data.contacts || [])
+      }
+    } catch (error) {
+      console.error('Error loading contacts:', error)
+      setUserContacts([])
+    }
+  }
+
+  const handleAddContact = (type: 'email' | 'phone') => {
+    setContactType(type)
+    setNewContact({
+      value: '',
+      label: '',
+      isPrimary: false
+    })
+    setShowContactModal(true)
+  }
+
+  const handleSubmitContact = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser) return
+
+    // Validar formato
+    if (contactType === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newContact.value)) {
+      alert('Email inválido')
+      return
+    }
+
+    try {
+      console.log('Agregando contacto:', {
+        userId: selectedUser.id,
+        type: contactType,
+        value: newContact.value,
+        label: newContact.label,
+        isPrimary: newContact.isPrimary
+      })
+
+      const response = await fetch(`/api/admin/clients/${selectedUser.id}/contacts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: contactType,
+          value: newContact.value,
+          label: newContact.label || undefined,
+          isPrimary: newContact.isPrimary,
+        }),
+      })
+
+      const data = await response.json()
+      console.log('Respuesta del servidor:', data)
+
+      if (!response.ok) {
+        console.error('Error del servidor:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        })
+        const errorMessage = data.error || data.details || `Error al agregar contacto (${response.status})`
+        throw new Error(errorMessage)
+      }
+
+      console.log('Contacto creado exitosamente:', data.contact)
+      
+      // Verificar que el contacto tiene ID
+      if (!data.contact || !data.contact.id) {
+        console.warn('⚠️ Contacto creado pero sin ID:', data)
+        throw new Error('El contacto se creó pero no se recibió el ID. Verifica en Supabase.')
+      }
+
+      // Recargar contactos
+      await loadUserContacts(selectedUser.id)
+      setShowContactModal(false)
+      setNewContact({ value: '', label: '', isPrimary: false })
+      alert('✅ Contacto agregado exitosamente')
+    } catch (error) {
+      console.error('Error adding contact:', error)
+      alert(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}\n\nRevisa la consola del navegador para más detalles.`)
+    }
+  }
+
+  const handleDeleteContact = async (contactId: string) => {
+    if (!selectedUser) return
+    if (!confirm('¿Estás seguro de eliminar este contacto?')) return
+
+    try {
+      const response = await fetch(`/api/admin/clients/${selectedUser.id}/contacts/${contactId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        await loadUserContacts(selectedUser.id)
+        alert('✅ Contacto eliminado exitosamente')
+      } else {
+        alert('Error al eliminar contacto')
+      }
+    } catch (error) {
+      console.error('Error deleting contact:', error)
+      alert('Error al eliminar contacto')
+    }
+  }
+
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser) return
+
+    setUpdating(true)
+
+    try {
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editingUser),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al actualizar usuario')
+      }
+
+      // Actualizar la lista de usuarios local
+      setUsers(users.map(user => 
+        user.id === selectedUser.id 
+          ? { ...user, ...editingUser }
+          : user
+      ))
+
+      // Cerrar modal
+      setShowEditModal(false)
+      setSelectedUser(null)
+
+      alert('✅ Usuario actualizado exitosamente')
+      
+    } catch (error) {
+      console.error('Error updating user:', error)
+      alert(`Error al actualizar el usuario: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleEditUserChange = (field: string, value: string | boolean) => {
+    setEditingUser(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const generateRandomPassword = () => {
+    const length = 12
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+    const password = Array.from(crypto.getRandomValues(new Uint8Array(length)))
+      .map(x => charset[x % charset.length])
+      .join('')
+    setNewPassword(password)
+    setGeneratedPassword(password)
+    return password
+  }
+
+  const handleResetPassword = async () => {
+    if (!selectedUser) return
+
+    setResettingPassword(true)
+
+    try {
+      // Si no hay contraseña, el servidor la generará automáticamente
+      const response = await fetch(`/api/admin/users/${selectedUser.id}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          newPassword: newPassword || undefined,
+          generatePassword: !newPassword, // Si no hay contraseña, generar automáticamente
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        const errorMessage = data.error || 'Error al resetear contraseña'
+        const errorDetails = data.details ? `\n\nDetalles: ${data.details}` : ''
+        throw new Error(errorMessage + errorDetails)
+      }
+
+      // Mostrar la nueva contraseña
+      const finalPassword = data.newPassword || generatedPassword || newPassword
+      setGeneratedPassword(finalPassword)
+      setNewPassword(finalPassword)
+      setShowPasswordField(true)
+
+      alert(`✅ Contraseña actualizada exitosamente!\n\nNueva contraseña: ${finalPassword}\n\n⚠️ Guarda esta contraseña, no se volverá a mostrar.`)
+    } catch (error) {
+      console.error('Error resetting password:', error)
+      alert(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+    } finally {
+      setResettingPassword(false)
+    }
   }
 
   const handleToggleUserStatus = async (userId: string) => {
@@ -693,6 +951,390 @@ export default function UserManagement() {
                   ) : (
                     'Crear Usuario'
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Editar Usuario</h3>
+            <form onSubmit={handleEditUserSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingUser.name}
+                  onChange={(e) => handleEditUserChange('name', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Nombre completo"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={editingUser.email}
+                  onChange={(e) => handleEditUserChange('email', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="usuario@empresa.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                <select 
+                  value={editingUser.role}
+                  onChange={(e) => handleEditUserChange('role', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="CLIENT">Cliente</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                <input
+                  type="text"
+                  value={editingUser.company}
+                  onChange={(e) => handleEditUserChange('company', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Nombre de la empresa"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <input
+                  type="tel"
+                  value={editingUser.phone}
+                  onChange={(e) => handleEditUserChange('phone', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+              <div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={editingUser.isActive}
+                    onChange={(e) => handleEditUserChange('isActive', e.target.checked)}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Usuario activo</span>
+                </label>
+              </div>
+
+              {/* Resetear Contraseña */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-900">Contraseña</h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowResetPassword(!showResetPassword)
+                      if (!showResetPassword) {
+                        setNewPassword('')
+                        setGeneratedPassword('')
+                        setShowPasswordField(false)
+                      }
+                    }}
+                    className="text-xs text-purple-600 hover:text-purple-700"
+                  >
+                    {showResetPassword ? 'Cancelar' : 'Resetear Contraseña'}
+                  </button>
+                </div>
+                
+                {showResetPassword && (
+                  <div className="space-y-3 p-3 bg-gray-50 rounded border border-gray-200">
+                    {showPasswordField && generatedPassword && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded">
+                        <p className="text-xs font-medium text-green-800 mb-1">Nueva contraseña generada:</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-mono bg-white px-2 py-1 rounded border flex-1">
+                            {generatedPassword}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedPassword)
+                              alert('Contraseña copiada al portapapeles')
+                            }}
+                            className="text-xs text-green-700 hover:text-green-900"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-600 mt-2">⚠️ Guarda esta contraseña, no se volverá a mostrar.</p>
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Nueva contraseña (opcional - se generará automáticamente si está vacío)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Dejar vacío para generar automáticamente"
+                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={generateRandomPassword}
+                          className="text-xs px-2 py-1.5 bg-gray-200 hover:bg-gray-300 rounded"
+                        >
+                          Generar
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={handleResetPassword}
+                      disabled={resettingPassword}
+                      className="w-full text-xs px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                    >
+                      {resettingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Gestión de Contactos - Solo para clientes */}
+              {editingUser.role === 'CLIENT' && (
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Contactos del Cliente</h4>
+                  
+                  {/* Emails */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Emails ({userContacts.filter(c => c.type === 'email').length + 1}/6)
+                        </span>
+                        <span className="text-xs text-gray-400">(1 principal + hasta 5 adicionales)</span>
+                      </div>
+                      {userContacts.filter(c => c.type === 'email').length < 5 && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddContact('email')}
+                          className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Agregar Email
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      {/* Email principal del usuario (de la tabla User) */}
+                      <div className="flex items-center justify-between p-2 bg-purple-50 rounded border border-purple-200 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{editingUser.email}</span>
+                          <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded">Principal</span>
+                          <span className="text-xs text-gray-500">(Login)</span>
+                        </div>
+                        <span className="text-xs text-gray-400">Tabla: User</span>
+                      </div>
+                      {/* Emails adicionales (de la tabla ClientContact) */}
+                      {userContacts.filter(c => c.type === 'email').map((contact) => (
+                        <div key={contact.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{contact.value}</span>
+                            {contact.label && <span className="text-xs text-gray-500">({contact.label})</span>}
+                            {contact.isPrimary && <span className="text-xs text-purple-600 bg-purple-100 px-1 rounded">Principal</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">Tabla: ClientContact</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteContact(contact.id)}
+                              className="text-red-600 hover:text-red-700"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {userContacts.filter(c => c.type === 'email').length === 0 && (
+                        <p className="text-xs text-gray-400 italic pl-2">No hay emails adicionales</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Teléfonos */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Teléfonos ({userContacts.filter(c => c.type === 'phone').length + (editingUser.phone ? 1 : 0)}/6)
+                        </span>
+                        <span className="text-xs text-gray-400">(1 principal + hasta 5 adicionales)</span>
+                      </div>
+                      {userContacts.filter(c => c.type === 'phone').length < 5 && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddContact('phone')}
+                          className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Agregar Teléfono
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      {/* Teléfono principal del usuario (de la tabla User) */}
+                      {editingUser.phone && (
+                        <div className="flex items-center justify-between p-2 bg-purple-50 rounded border border-purple-200 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{editingUser.phone}</span>
+                            <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded">Principal</span>
+                          </div>
+                          <span className="text-xs text-gray-400">Tabla: User</span>
+                        </div>
+                      )}
+                      {/* Teléfonos adicionales (de la tabla ClientContact) */}
+                      {userContacts.filter(c => c.type === 'phone').map((contact) => (
+                        <div key={contact.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{contact.value}</span>
+                            {contact.label && <span className="text-xs text-gray-500">({contact.label})</span>}
+                            {contact.isPrimary && <span className="text-xs text-purple-600 bg-purple-100 px-1 rounded">Principal</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">Tabla: ClientContact</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteContact(contact.id)}
+                              className="text-red-600 hover:text-red-700"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {!editingUser.phone && userContacts.filter(c => c.type === 'phone').length === 0 && (
+                        <p className="text-xs text-gray-400 italic pl-2">No hay teléfonos registrados</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setSelectedUser(null)
+                  }}
+                  disabled={updating}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {updating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Actualizando...
+                    </>
+                  ) : (
+                    'Guardar Cambios'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Contact Modal */}
+      {showContactModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Agregar {contactType === 'email' ? 'Email' : 'Teléfono'}
+              </h3>
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmitContact} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {contactType === 'email' ? 'Email' : 'Teléfono'} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type={contactType === 'email' ? 'email' : 'tel'}
+                  required
+                  value={newContact.value}
+                  onChange={(e) => setNewContact({ ...newContact, value: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder={contactType === 'email' ? 'email@ejemplo.com' : '+1 (555) 123-4567'}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Etiqueta (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newContact.label}
+                  onChange={(e) => setNewContact({ ...newContact, label: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="Ej: Trabajo, Personal, WhatsApp"
+                />
+              </div>
+              <div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={newContact.isPrimary}
+                    onChange={(e) => setNewContact({ ...newContact, isPrimary: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Marcar como principal</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Si se marca como principal, este será el contacto principal de este tipo
+                </p>
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowContactModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  Agregar
                 </button>
               </div>
             </form>

@@ -130,9 +130,12 @@ const Footer = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex items-center gap-6 text-sm text-gray-400"
             >
-              <button className="hover:text-white transition-colors duration-300">
+              <a 
+                href="/politica-privacidad"
+                className="hover:text-white transition-colors duration-300"
+              >
                 Política de Privacidad
-              </button>
+              </a>
               <button className="hover:text-white transition-colors duration-300">
                 Términos de Servicio
               </button>

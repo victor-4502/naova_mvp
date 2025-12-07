@@ -8,18 +8,24 @@ export async function GET(request: NextRequest) {
   try {
     // Check if user is admin
     const userRole = request.headers.get('x-user-role')
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'ADMIN') {
       return NextResponse.json(
         { error: 'No autorizado' },
         { status: 403 }
       )
     }
 
-    // Get all clients with their profiles
+    // Get all clients with their profiles and contacts
     const clients = await prisma.user.findMany({
       where: { role: UserRole.client_enterprise },
       include: {
         clientProfile: true,
+        clientContacts: {
+          orderBy: [
+            { isPrimary: 'desc' },
+            { createdAt: 'asc' },
+          ],
+        },
         _count: {
           select: {
             legacyRequirements: true,
@@ -31,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     // Transform data for response
     const clientsData = clients.map(client => ({
-      id: client.id,
+      id: client.id,  // ID único generado por Prisma cuid()
       name: client.name,
       email: client.email,
       company: client.company,
@@ -40,6 +46,14 @@ export async function GET(request: NextRequest) {
       plan: client.clientProfile?.billingPlan,
       trialEndsAt: client.clientProfile?.trialEndsAt,
       requirementsCount: client._count.legacyRequirements,
+      contacts: client.clientContacts.map(contact => ({
+        id: contact.id,
+        type: contact.type,
+        value: contact.value,
+        label: contact.label,
+        isPrimary: contact.isPrimary,
+        verified: contact.verified,
+      })),
       createdAt: client.createdAt,
     }))
 
@@ -60,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const userRole = request.headers.get('x-user-role')
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'ADMIN') {
       return NextResponse.json(
         { error: 'No autorizado' },
         { status: 403 }

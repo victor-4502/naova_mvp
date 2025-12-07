@@ -20,8 +20,9 @@ interface User {
   isActive?: boolean
 }
 
-// Detectar si estamos en producci├│n (con base de datos)
-const USE_PRISMA = process.env.DATABASE_URL && process.env.NODE_ENV === 'production'
+// Detectar si estamos usando Prisma (si DATABASE_URL existe, usar Prisma)
+// Usar Prisma siempre que DATABASE_URL esté configurado, sin importar el entorno
+const USE_PRISMA = !!process.env.DATABASE_URL
 
 // ==================== FUNCIONES PARA PRISMA (PRODUCCI├ôN) ====================
 
