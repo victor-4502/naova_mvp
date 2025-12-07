@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { verifyCredentials } from '@/lib/users'
+import { prisma } from '@/lib/prisma'
+
+const USE_PRISMA = !!process.env.DATABASE_URL
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
