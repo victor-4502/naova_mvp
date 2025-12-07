@@ -80,16 +80,33 @@ export async function POST(
     }
     // Si no coincide, usa 'web' como default (ya está asignado)
 
-    // Obtener información de contacto del cliente si existe
+    // Obtener información de contacto para enviar la respuesta
     let toContact: string | null = null
-    if (requestData.client) {
-      // Intentar obtener el contacto del mensaje original
-      const lastInboundMessage = requestData.messages[0]
+    
+    // Obtener el último mensaje entrante para extraer el contacto
+    const lastInboundMessage = requestData.messages[0]
+    
+    // Para WhatsApp, obtener el número del mensaje original (incluso si no hay cliente)
+    if (messageSource === 'whatsapp') {
       if (lastInboundMessage?.from) {
         toContact = lastInboundMessage.from
-      } else if (requestData.client.email) {
+        console.log('[Create Message] WhatsApp number from message:', toContact)
+      } else {
+        console.warn('[Create Message] No se encontró número en el mensaje original para WhatsApp')
+      }
+    } else if (messageSource === 'email') {
+      // Para email, obtener del mensaje o del cliente
+      if (lastInboundMessage?.from) {
+        toContact = lastInboundMessage.from
+      } else if (requestData.client?.email) {
         toContact = requestData.client.email
       }
+    }
+    
+    // Si no se encontró contacto y hay cliente, intentar obtener del cliente
+    if (!toContact && requestData.client?.email) {
+      toContact = requestData.client.email
+      console.log('[Create Message] Contact from client email:', toContact)
     }
 
     // Obtener el "from" (remitente) - usar el email del admin o un valor por defecto
