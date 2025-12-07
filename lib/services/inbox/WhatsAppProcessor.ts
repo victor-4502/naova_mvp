@@ -292,33 +292,39 @@ export class WhatsAppProcessor {
               },
             },
           },
-          OR: [
+          AND: [
             {
-              pipelineStage: {
-                not: 'closed',
-              },
-            },
-            {
-              pipelineStage: 'closed',
-              updatedAt: {
-                gte: sevenDaysAgo,
-              },
-            },
-          ],
-          OR: [
-            {
-              updatedAt: {
-                gte: sevenDaysAgo,
-              },
-            },
-            {
-              messages: {
-                some: {
-                  createdAt: {
+              OR: [
+                {
+                  pipelineStage: {
+                    not: 'closed',
+                  },
+                },
+                {
+                  pipelineStage: 'closed',
+                  updatedAt: {
                     gte: sevenDaysAgo,
                   },
                 },
-              },
+              ],
+            },
+            {
+              OR: [
+                {
+                  updatedAt: {
+                    gte: sevenDaysAgo,
+                  },
+                },
+                {
+                  messages: {
+                    some: {
+                      createdAt: {
+                        gte: sevenDaysAgo,
+                      },
+                    },
+                  },
+                },
+              ],
             },
           ],
         },
