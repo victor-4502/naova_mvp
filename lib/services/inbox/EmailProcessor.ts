@@ -61,7 +61,7 @@ export class EmailProcessor {
         metadata: {
           from: payload.from.email,
           fromName: payload.from.name,
-          to: payload.to,
+          to: Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
           subject: payload.subject,
           timestamp: payload.timestamp,
         },
@@ -91,7 +91,7 @@ export class EmailProcessor {
       metadata: {
         from: payload.from.email,
         fromName: payload.from.name,
-        to: payload.to,
+        to: Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
         subject: payload.subject,
         timestamp: payload.timestamp,
       },
