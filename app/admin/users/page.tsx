@@ -776,11 +776,11 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.role === 'ADMIN' 
+                        user.role === 'admin_naova' || user.role === 'operator_naova'
                           ? 'bg-purple-100 text-purple-800' 
                           : 'bg-blue-100 text-blue-800'
                       }`}>
-                        {user.role === 'ADMIN' ? 'Administrador' : 'Cliente'}
+                        {user.role === 'admin_naova' || user.role === 'operator_naova' ? 'Administrador' : 'Cliente'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

@@ -51,11 +51,13 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    if (pathname.startsWith('/admin') && payload.role !== 'ADMIN') {
+    // Verificar acceso a rutas de admin (solo admin_naova y operator_naova)
+    if (pathname.startsWith('/admin') && payload.role !== 'admin_naova' && payload.role !== 'operator_naova') {
       return NextResponse.redirect(new URL('/app/dashboard', request.url))
     }
 
-    if (pathname.startsWith('/app') && payload.role === 'ADMIN') {
+    // Redirigir admins que intentan acceder a rutas de cliente
+    if (pathname.startsWith('/app') && (payload.role === 'admin_naova' || payload.role === 'operator_naova')) {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url))
     }
 

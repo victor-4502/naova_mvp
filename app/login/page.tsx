@@ -43,7 +43,7 @@ function LoginForm() {
 
       // Redirect based on role
       console.log('User role:', data.user.role) // Debug log
-      if (data.user.role === 'ADMIN') {
+      if (data.user.role === 'admin_naova' || data.user.role === 'operator_naova') {
         console.log('Redirecting to admin dashboard')
         window.location.href = '/admin/dashboard'
       } else {
