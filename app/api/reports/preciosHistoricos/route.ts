@@ -19,13 +19,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const productName = searchParams.get('productName')
     const providerId = searchParams.get('providerId')
-    const clientId = payload.role === 'CLIENT' ? payload.userId : searchParams.get('clientId')
+    const clientId = payload.role === 'client_enterprise' ? payload.userId : searchParams.get('clientId')
 
     // Obtener hist├│rico de precios
     let priceHistory = appStore.getPriceHistory()
 
-    // Filtrar por cliente si es CLIENT
-    if (payload.role === 'CLIENT') {
+    // Filtrar por cliente si es client_enterprise
+    if (payload.role === 'client_enterprise') {
       priceHistory = priceHistory.filter(p => p.clientId === clientId)
     } else if (clientId) {
       priceHistory = priceHistory.filter(p => p.clientId === clientId)

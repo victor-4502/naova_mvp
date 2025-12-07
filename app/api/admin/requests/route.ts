@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Solo admins / operadores
-    if (user.role !== 'ADMIN' && user.role !== 'admin' && user.role !== 'admin_naova' && user.role !== 'operator_naova') {
+    if (user.role !== 'admin_naova' && user.role !== 'operator_naova') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 

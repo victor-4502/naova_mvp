@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payload = verifyToken(token)
-    if (!payload || payload.role !== 'CLIENT') {
+    if (!payload || payload.role !== 'client_enterprise') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }
 

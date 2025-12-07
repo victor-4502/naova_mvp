@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payload = verifyToken(token)
-    if (!payload || payload.role !== 'ADMIN') {
+    if (!payload || payload.role !== 'admin_naova') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }
 

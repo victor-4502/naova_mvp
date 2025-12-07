@@ -16,8 +16,6 @@ export async function PATCH(
 
     // Solo admins / operadores
     if (
-      user.role !== 'ADMIN' &&
-      user.role !== 'admin' &&
       user.role !== 'admin_naova' &&
       user.role !== 'operator_naova'
     ) {
