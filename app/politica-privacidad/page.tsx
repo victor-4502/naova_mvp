@@ -25,7 +25,7 @@ export default function PoliticaPrivacidadPage() {
                 1. Introducción
               </h2>
               <p className="text-gray-700 leading-relaxed mb-4">
-                Naova ("nosotros", "nuestro" o "la empresa") se compromete a proteger la privacidad 
+                Naova (&ldquo;nosotros&rdquo;, &ldquo;nuestro&rdquo; o &ldquo;la empresa&rdquo;) se compromete a proteger la privacidad 
                 de nuestros usuarios. Esta Política de Privacidad describe cómo recopilamos, usamos, 
                 almacenamos y protegemos su información personal cuando utiliza nuestros servicios.
               </p>
@@ -165,7 +165,7 @@ export default function PoliticaPrivacidadPage() {
               <p className="text-gray-700 leading-relaxed mb-4">
                 Podemos actualizar esta Política de Privacidad ocasionalmente. Le notificaremos 
                 sobre cambios significativos publicando la nueva política en esta página y 
-                actualizando la fecha de "Última actualización". Le recomendamos revisar esta 
+                actualizando la fecha de &ldquo;Última actualización&rdquo;. Le recomendamos revisar esta 
                 política periódicamente.
               </p>
             </section>
