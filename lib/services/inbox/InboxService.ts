@@ -303,6 +303,7 @@ export class InboxService {
       content: string
       metadata?: {
         from?: string
+        fromName?: string
         to?: string
         subject?: string
         timestamp?: string
@@ -325,6 +326,7 @@ export class InboxService {
         direction: 'inbound',
         content: input.content,
         ...(input.metadata?.from && { from: input.metadata.from }),
+        ...(input.metadata?.fromName && !input.metadata?.from && { from: input.metadata.fromName }),
         ...(input.metadata?.to && {
           to: Array.isArray(input.metadata.to) ? input.metadata.to.join(', ') : input.metadata.to
         }),
