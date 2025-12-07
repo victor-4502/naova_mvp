@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener el rol real de Prisma (no el legacy)
-    let actualRole = user.role
+    let actualRole: string = user.role
     if (USE_PRISMA) {
       const prismaUser = await prisma.user.findUnique({
         where: { email },
         select: { role: true }
       })
       if (prismaUser) {
-        actualRole = prismaUser.role as string
+        actualRole = prismaUser.role
       }
     }
 
