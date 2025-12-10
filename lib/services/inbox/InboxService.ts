@@ -57,19 +57,40 @@ export class InboxService {
    * Crea un nuevo request desde un mensaje entrante
    */
   static async createRequest(input: CreateRequestInput) {
-    // Extraer información del contenido
-    const extracted = ContentExtractor.extract(input.content)
+    // Para emails, el input.content puede incluir el subject
+    // Necesitamos extraer solo el cuerpo para guardarlo en el mensaje
+    let messageContent = input.content
+    let contentForAnalysis = input.content
+    
+    // Si es un email y el contenido incluye el subject al inicio, separarlo
+    if (input.source === 'email' && input.metadata?.subject) {
+      const subject = input.metadata.subject
+      // Si el contenido empieza con el subject, removerlo
+      if (messageContent.startsWith(subject)) {
+        messageContent = messageContent.substring(subject.length).trim()
+        // Si empieza con saltos de línea, removerlos
+        messageContent = messageContent.replace(/^\n+\s*/, '')
+      }
+      // Si el contenido es exactamente el subject, está vacío
+      if (messageContent === subject || messageContent.trim().length === 0) {
+        // El contenido del email está vacío, usar solo el subject
+        messageContent = input.metadata.subject
+      }
+    }
+    
+    // Extraer información del contenido (usar el contenido completo para análisis)
+    const extracted = ContentExtractor.extract(contentForAnalysis)
     
     // Clasificar el request
     const classification = ClassificationService.classify(
-      input.content,
+      contentForAnalysis,
       input.source,
       input.metadata
     )
 
     // Analizar reglas por categoría para determinar campos faltantes
     // Pasar el contenido original para búsqueda directa de keywords si no se encuentra categoría
-    const ruleAnalysis = RequestRuleEngine.analyze(extracted, classification, input.content)
+    const ruleAnalysis = RequestRuleEngine.analyze(extracted, classification, contentForAnalysis)
     
     // Determinar estado inicial
     const { status, pipelineStage } = this.determineInitialStatus(
@@ -85,7 +106,7 @@ export class InboxService {
       clientId: input.clientId,
       status,
       pipelineStage,
-      rawContent: input.content,
+      rawContent: contentForAnalysis, // Para análisis completo
       normalizedContent: {
         extracted,
         classification,
@@ -106,7 +127,7 @@ export class InboxService {
           source: input.source === 'file' || input.source === 'api' ? 'web' : input.source,
           sourceId: input.sourceId,
           direction: 'inbound',
-          content: input.content,
+          content: messageContent, // Guardar solo el contenido del cuerpo (sin subject)
           // Agregar campos from, to, subject desde metadata si están disponibles
           ...(input.metadata?.from && { from: input.metadata.from }),
           ...(input.metadata?.fromName && !input.metadata?.from && { from: input.metadata.fromName }),
