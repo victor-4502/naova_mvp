@@ -32,49 +32,68 @@ export class EmailProcessor {
     clientId?: string  // Opcional: puede ser undefined si no se identifica cliente
   ) {
     // Extraer contenido del email (preferir texto plano, luego HTML)
-    let content = payload.text || payload.html || ''
+    // IMPORTANTE: payload.text y payload.html pueden venir vacíos o undefined
+    let content = ''
     
-    console.log('[EmailProcessor] Contenido recibido:', {
+    console.log('[EmailProcessor] 📧 Payload completo recibido:', {
+      subject: payload.subject,
       hasText: !!payload.text,
       hasHtml: !!payload.html,
+      textValue: payload.text || '(vacío)',
+      htmlValue: payload.html ? payload.html.substring(0, 200) : '(vacío)',
       textLength: payload.text?.length || 0,
       htmlLength: payload.html?.length || 0,
-      textPreview: payload.text?.substring(0, 100),
-      htmlPreview: payload.html?.substring(0, 100),
     })
     
-    // Si hay HTML pero no texto, extraer texto del HTML
-    if (!payload.text && payload.html) {
-      // Remover tags HTML básicos (puedes mejorar esto con una librería)
+    // Prioridad 1: Usar texto plano si existe y no está vacío
+    if (payload.text && payload.text.trim().length > 0) {
+      content = payload.text.trim()
+      console.log('[EmailProcessor] ✅ Usando texto plano:', content.substring(0, 100))
+    }
+    // Prioridad 2: Si no hay texto, extraer de HTML
+    else if (payload.html && payload.html.trim().length > 0) {
+      console.log('[EmailProcessor] 📄 Extrayendo texto desde HTML...')
+      // Remover tags HTML y limpiar
       content = payload.html
         .replace(/<style[^>]*>.*?<\/style>/gi, ' ') // Remover estilos
         .replace(/<script[^>]*>.*?<\/script>/gi, ' ') // Remover scripts
+        .replace(/<head[^>]*>.*?<\/head>/gi, ' ') // Remover head
         .replace(/<[^>]+>/g, ' ') // Remover tags HTML
         .replace(/&nbsp;/g, ' ') // Reemplazar &nbsp;
         .replace(/&amp;/g, '&') // Reemplazar &amp;
         .replace(/&lt;/g, '<') // Reemplazar &lt;
         .replace(/&gt;/g, '>') // Reemplazar &gt;
         .replace(/&quot;/g, '"') // Reemplazar &quot;
-        .replace(/\s+/g, ' ') // Normalizar espacios
+        .replace(/&#39;/g, "'") // Reemplazar &#39;
+        .replace(/&apos;/g, "'") // Reemplazar &apos;
+        .replace(/\s+/g, ' ') // Normalizar espacios múltiples
         .trim()
+      
+      console.log('[EmailProcessor] ✅ Texto extraído desde HTML:', content.substring(0, 100))
     }
     
-    // Si el contenido sigue vacío o solo tiene espacios, usar el subject
+    // Si el contenido sigue vacío después de todo, usar el subject como fallback
     if (!content || content.trim().length === 0) {
+      console.warn('[EmailProcessor] ⚠️ Contenido vacío después de procesar, usando subject como fallback')
       content = payload.subject || 'Sin contenido'
-      console.warn('[EmailProcessor] Contenido vacío, usando solo subject')
     }
     
-    // Combinar subject y body para análisis completo
-    // Si el content ya incluye el subject (por el subject), no duplicarlo
+    // Para el análisis completo, combinar subject y body
+    // PERO para mostrar al usuario, solo usar el contenido del cuerpo
     const fullContent = payload.subject && !content.includes(payload.subject)
       ? `${payload.subject}\n\n${content}`
       : content
     
-    console.log('[EmailProcessor] Contenido final procesado:', {
-      contentLength: fullContent.length,
-      preview: fullContent.substring(0, 200),
+    console.log('[EmailProcessor] 📝 Contenido final:', {
+      contentLength: content.length,
+      fullContentLength: fullContent.length,
+      contentPreview: content.substring(0, 150),
+      fullContentPreview: fullContent.substring(0, 150),
     })
+    
+    // IMPORTANTE: Guardar el contenido del cuerpo (sin subject) en el mensaje
+    // El subject se guarda por separado en metadata
+    const messageContent = content // Solo el cuerpo del email, sin subject
     
     // ANTES DE CREAR UN NUEVO REQUEST, verificar si hay un request activo/reciente
     // para este email (continuación de conversación)
@@ -84,10 +103,11 @@ export class EmailProcessor {
       console.log(`[EmailProcessor] Mensaje agregado a request existente: ${activeRequest.id}`)
       
       // Agregar el mensaje al request existente
+      // IMPORTANTE: Usar messageContent (solo cuerpo) no fullContent (con subject)
       const message = await InboxService.addMessageToRequest(activeRequest.id, {
         source: 'email',
         sourceId: payload.messageId,
-        content: fullContent,
+        content: messageContent, // Solo el cuerpo del email
         metadata: {
           from: payload.from.email,
           fromName: payload.from.name,
@@ -112,11 +132,13 @@ export class EmailProcessor {
     
     // Si no hay request activo, crear uno nuevo
     console.log(`[EmailProcessor] Creando nuevo request para: ${payload.from.email}`)
+    // Para createRequest, usar fullContent (con subject) para el análisis
+    // Pero el mensaje individual usará messageContent (solo cuerpo)
     const request = await InboxService.createRequest({
       source: 'email',
       sourceId: payload.messageId,
       clientId,
-      content: fullContent,
+      content: fullContent, // Para análisis completo (incluye subject)
       attachments: payload.attachments,
       metadata: {
         from: payload.from.email,
