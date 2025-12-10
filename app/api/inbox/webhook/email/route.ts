@@ -9,14 +9,95 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
+    // Log completo del payload recibido para diagnóstico
+    console.log('[Email Webhook] Received payload:', JSON.stringify(body, null, 2))
+    
     // Verificar que es un webhook válido
     // TODO: Agregar verificación de firma
     
+    // Resend puede enviar el formato de diferentes maneras
+    // Normalizar el formato del payload
+    let normalizedPayload: {
+      from: { email: string; name?: string }
+      to: string[]
+      subject: string
+      text: string
+      html?: string
+      messageId: string
+      timestamp: string
+      attachments?: Array<{
+        filename: string
+        mimeType: string
+        size: number
+        url: string
+      }>
+    }
+    
+    // Caso 1: Formato directo (lo que esperamos)
+    if (body.from && body.from.email) {
+      normalizedPayload = {
+        from: body.from,
+        to: Array.isArray(body.to) ? body.to : [body.to],
+        subject: body.subject || '',
+        text: body.text || '',
+        html: body.html,
+        messageId: body.messageId || body.message_id || `email-${Date.now()}`,
+        timestamp: body.timestamp || body.created_at || new Date().toISOString(),
+        attachments: body.attachments,
+      }
+    }
+    // Caso 2: Formato Resend con "data"
+    else if (body.data && body.data.from) {
+      const data = body.data
+      normalizedPayload = {
+        from: typeof data.from === 'string' 
+          ? { email: data.from }
+          : { email: data.from.email || data.from, name: data.from.name },
+        to: Array.isArray(data.to) ? data.to : [data.to],
+        subject: data.subject || '',
+        text: data.text || '',
+        html: data.html,
+        messageId: data.messageId || data.message_id || `email-${Date.now()}`,
+        timestamp: data.timestamp || data.created_at || new Date().toISOString(),
+        attachments: data.attachments,
+      }
+    }
+    // Caso 3: Formato Resend con "payload"
+    else if (body.payload && body.payload.from) {
+      const payload = body.payload
+      normalizedPayload = {
+        from: typeof payload.from === 'string'
+          ? { email: payload.from }
+          : { email: payload.from.email || payload.from, name: payload.from.name },
+        to: Array.isArray(payload.to) ? payload.to : [payload.to],
+        subject: payload.subject || '',
+        text: payload.text || '',
+        html: payload.html,
+        messageId: payload.messageId || payload.message_id || `email-${Date.now()}`,
+        timestamp: payload.timestamp || payload.created_at || new Date().toISOString(),
+        attachments: payload.attachments,
+      }
+    }
+    // Formato no reconocido
+    else {
+      console.error('[Email Webhook] Formato no reconocido:', JSON.stringify(body, null, 2))
+      return NextResponse.json(
+        {
+          error: 'Formato de webhook no reconocido',
+          received: body,
+          details: 'El payload no coincide con ningún formato conocido. Verifica la documentación de Resend.',
+        },
+        { status: 400 }
+      )
+    }
+    
+    console.log('[Email Webhook] Normalized payload:', JSON.stringify(normalizedPayload, null, 2))
+    
     // Identificar cliente desde el email
-    const clientId = await EmailProcessor.identifyClient(body.from.email)
+    const clientId = await EmailProcessor.identifyClient(normalizedPayload.from.email)
     
     // Procesar email incluso si no se encuentra cliente (clientId puede ser null)
-    const newRequest = await EmailProcessor.processEmail(body, clientId || undefined)
+    const newRequest = await EmailProcessor.processEmail(normalizedPayload, clientId || undefined)
     
     // Si no se encontró cliente, responder con mensaje genérico
     if (!clientId) {
