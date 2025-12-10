@@ -34,17 +34,47 @@ export class EmailProcessor {
     // Extraer contenido del email (preferir texto plano, luego HTML)
     let content = payload.text || payload.html || ''
     
-    // Si hay HTML, limpiarlo un poco para extraer texto
+    console.log('[EmailProcessor] Contenido recibido:', {
+      hasText: !!payload.text,
+      hasHtml: !!payload.html,
+      textLength: payload.text?.length || 0,
+      htmlLength: payload.html?.length || 0,
+      textPreview: payload.text?.substring(0, 100),
+      htmlPreview: payload.html?.substring(0, 100),
+    })
+    
+    // Si hay HTML pero no texto, extraer texto del HTML
     if (!payload.text && payload.html) {
       // Remover tags HTML básicos (puedes mejorar esto con una librería)
       content = payload.html
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(/<style[^>]*>.*?<\/style>/gi, ' ') // Remover estilos
+        .replace(/<script[^>]*>.*?<\/script>/gi, ' ') // Remover scripts
+        .replace(/<[^>]+>/g, ' ') // Remover tags HTML
+        .replace(/&nbsp;/g, ' ') // Reemplazar &nbsp;
+        .replace(/&amp;/g, '&') // Reemplazar &amp;
+        .replace(/&lt;/g, '<') // Reemplazar &lt;
+        .replace(/&gt;/g, '>') // Reemplazar &gt;
+        .replace(/&quot;/g, '"') // Reemplazar &quot;
+        .replace(/\s+/g, ' ') // Normalizar espacios
         .trim()
     }
     
+    // Si el contenido sigue vacío o solo tiene espacios, usar el subject
+    if (!content || content.trim().length === 0) {
+      content = payload.subject || 'Sin contenido'
+      console.warn('[EmailProcessor] Contenido vacío, usando solo subject')
+    }
+    
     // Combinar subject y body para análisis completo
-    const fullContent = payload.subject ? `${payload.subject}\n\n${content}` : content
+    // Si el content ya incluye el subject (por el subject), no duplicarlo
+    const fullContent = payload.subject && !content.includes(payload.subject)
+      ? `${payload.subject}\n\n${content}`
+      : content
+    
+    console.log('[EmailProcessor] Contenido final procesado:', {
+      contentLength: fullContent.length,
+      preview: fullContent.substring(0, 200),
+    })
     
     // ANTES DE CREAR UN NUEVO REQUEST, verificar si hay un request activo/reciente
     // para este email (continuación de conversación)

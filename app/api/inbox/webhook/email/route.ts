@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { EmailProcessor } from '@/lib/services/inbox/EmailProcessor'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
@@ -95,6 +96,28 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('[Email Webhook] Normalized payload:', JSON.stringify(normalizedPayload, null, 2))
+    
+    // Verificar si este mensaje ya fue procesado (prevenir duplicados)
+    if (normalizedPayload.messageId) {
+      const existingMessage = await prisma.message.findFirst({
+        where: {
+          sourceId: normalizedPayload.messageId,
+          source: 'email',
+        },
+      })
+      
+      if (existingMessage) {
+        console.log(`[Email Webhook] Mensaje ya procesado, ignorando duplicado: ${normalizedPayload.messageId}`)
+        return NextResponse.json(
+          {
+            success: true,
+            message: 'Mensaje ya procesado (duplicado ignorado)',
+            requestId: existingMessage.requestId,
+          },
+          { status: 200 }
+        )
+      }
+    }
     
     const identifyStart = Date.now()
     // Identificar cliente desde el email
