@@ -18,6 +18,7 @@
     "test:webhook:whatsapp": "tsx scripts/probar-webhook-whatsapp.ts",
     "test:webhooks": "tsx scripts/probar-webhook-email.ts && tsx scripts/probar-webhook-whatsapp.ts",
     "test:whatsapp": "tsx scripts/test-whatsapp.ts",
+    "test:endpoint:email": "tsx scripts/probar-endpoint-email.ts",
     "diagnosticar:request": "tsx scripts/diagnosticar-request.ts"
   },
   "dependencies": {

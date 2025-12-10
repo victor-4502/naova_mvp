@@ -6,11 +6,14 @@ import { EmailProcessor } from '@/lib/services/inbox/EmailProcessor'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
     const body = await request.json()
     
     // Log completo del payload recibido para diagnóstico
     console.log('[Email Webhook] Received payload:', JSON.stringify(body, null, 2))
+    console.log(`[Email Webhook] Tiempo inicio: ${startTime}ms`)
     
     // Verificar que es un webhook válido
     // TODO: Agregar verificación de firma
@@ -93,11 +96,18 @@ export async function POST(request: NextRequest) {
     
     console.log('[Email Webhook] Normalized payload:', JSON.stringify(normalizedPayload, null, 2))
     
+    const identifyStart = Date.now()
     // Identificar cliente desde el email
     const clientId = await EmailProcessor.identifyClient(normalizedPayload.from.email)
+    console.log(`[Email Webhook] Tiempo identificar cliente: ${Date.now() - identifyStart}ms`)
     
+    const processStart = Date.now()
     // Procesar email incluso si no se encuentra cliente (clientId puede ser null)
     const newRequest = await EmailProcessor.processEmail(normalizedPayload, clientId || undefined)
+    console.log(`[Email Webhook] Tiempo procesar email: ${Date.now() - processStart}ms`)
+    
+    const totalTime = Date.now() - startTime
+    console.log(`[Email Webhook] ⏱️ Tiempo total de procesamiento: ${totalTime}ms`)
     
     // Si no se encontró cliente, responder con mensaje genérico
     if (!clientId) {
@@ -106,7 +116,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         received: true,
         message: 'Request creado sin cliente asignado. Se requiere asignación manual.',
-        requestId: newRequest.id
+        requestId: newRequest.id,
+        processingTime: totalTime
       }, { status: 200 })
     }
     
@@ -114,6 +125,7 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         requestId: newRequest.id,
+        processingTime: totalTime
       },
       { status: 200 }
     )
