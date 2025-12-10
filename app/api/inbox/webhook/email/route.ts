@@ -38,10 +38,12 @@ export async function POST(request: NextRequest) {
     }
     
     // Caso 1: Formato directo (lo que esperamos)
-    if (body.from && body.from.email) {
+    if (body.from && (body.from.email || typeof body.from === 'string')) {
       normalizedPayload = {
-        from: body.from,
-        to: Array.isArray(body.to) ? body.to : [body.to],
+        from: typeof body.from === 'string' 
+          ? { email: body.from }
+          : { email: body.from.email || '', name: body.from.name },
+        to: Array.isArray(body.to) ? body.to : (body.to ? [body.to] : []),
         subject: body.subject || '',
         text: body.text || '',
         html: body.html,
@@ -51,13 +53,21 @@ export async function POST(request: NextRequest) {
       }
     }
     // Caso 2: Formato Resend con "data"
-    else if (body.data && body.data.from) {
+    else if (body.data) {
       const data = body.data
+      // Resend puede enviar 'from' como string o como objeto
+      const fromEmail = typeof data.from === 'string' 
+        ? data.from 
+        : (data.from?.email || data.from || '')
+      
       normalizedPayload = {
         from: typeof data.from === 'string' 
           ? { email: data.from }
-          : { email: data.from.email || data.from, name: data.from.name },
-        to: Array.isArray(data.to) ? data.to : [data.to],
+          : { 
+              email: data.from?.email || data.from || '', 
+              name: data.from?.name 
+            },
+        to: Array.isArray(data.to) ? data.to : (data.to ? [data.to] : []),
         subject: data.subject || '',
         text: data.text || '',
         html: data.html,
@@ -67,19 +77,39 @@ export async function POST(request: NextRequest) {
       }
     }
     // Caso 3: Formato Resend con "payload"
-    else if (body.payload && body.payload.from) {
+    else if (body.payload) {
       const payload = body.payload
       normalizedPayload = {
         from: typeof payload.from === 'string'
           ? { email: payload.from }
-          : { email: payload.from.email || payload.from, name: payload.from.name },
-        to: Array.isArray(payload.to) ? payload.to : [payload.to],
+          : { 
+              email: payload.from?.email || payload.from || '', 
+              name: payload.from?.name 
+            },
+        to: Array.isArray(payload.to) ? payload.to : (payload.to ? [payload.to] : []),
         subject: payload.subject || '',
         text: payload.text || '',
         html: payload.html,
         messageId: payload.messageId || payload.message_id || `email-${Date.now()}`,
         timestamp: payload.timestamp || payload.created_at || new Date().toISOString(),
         attachments: payload.attachments,
+      }
+    }
+    // Caso 4: Formato con campos directos pero sin 'from' como objeto
+    else if (body.from || body.sender || body['from-email']) {
+      // Intentar extraer el email de diferentes campos posibles
+      const fromEmail = body.from || body.sender || body['from-email'] || body['from_email'] || ''
+      normalizedPayload = {
+        from: typeof fromEmail === 'string' 
+          ? { email: fromEmail }
+          : { email: fromEmail?.email || fromEmail || '', name: fromEmail?.name },
+        to: Array.isArray(body.to) ? body.to : (body.to ? [body.to] : []),
+        subject: body.subject || '',
+        text: body.text || '',
+        html: body.html,
+        messageId: body.messageId || body.message_id || body.id || `email-${Date.now()}`,
+        timestamp: body.timestamp || body.created_at || body.date || new Date().toISOString(),
+        attachments: body.attachments,
       }
     }
     // Formato no reconocido
@@ -95,7 +125,29 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Validar que tenemos al menos un email de origen
+    if (!normalizedPayload.from.email || normalizedPayload.from.email.trim().length === 0) {
+      console.error('[Email Webhook] Email de origen no encontrado en payload:', JSON.stringify(body, null, 2))
+      return NextResponse.json(
+        {
+          error: 'Email de origen no encontrado',
+          received: body,
+          details: 'No se pudo extraer el email del remitente del payload.',
+        },
+        { status: 400 }
+      )
+    }
+    
     console.log('[Email Webhook] Normalized payload:', JSON.stringify(normalizedPayload, null, 2))
+    console.log('[Email Webhook] 🔍 Análisis del contenido:', {
+      hasSubject: !!normalizedPayload.subject,
+      hasText: !!normalizedPayload.text && normalizedPayload.text.length > 0,
+      hasHtml: !!normalizedPayload.html && normalizedPayload.html.length > 0,
+      textLength: normalizedPayload.text?.length || 0,
+      htmlLength: normalizedPayload.html?.length || 0,
+      textPreview: normalizedPayload.text?.substring(0, 100) || '(vacío)',
+      htmlPreview: normalizedPayload.html?.substring(0, 100) || '(vacío)',
+    })
     
     // Verificar si este mensaje ya fue procesado (prevenir duplicados)
     if (normalizedPayload.messageId) {
@@ -134,7 +186,7 @@ export async function POST(request: NextRequest) {
     
     // Si no se encontró cliente, responder con mensaje genérico
     if (!clientId) {
-      console.warn(`Cliente no encontrado para email: ${body.from.email}. Request creado sin cliente asignado.`)
+      console.warn(`Cliente no encontrado para email: ${normalizedPayload.from.email}. Request creado sin cliente asignado.`)
       // TODO: Enviar respuesta genérica al email
       return NextResponse.json({ 
         received: true,
