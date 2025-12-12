@@ -6,15 +6,74 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Obtiene el contenido completo del email desde Resend API
+ * Resend no envía el contenido en el webhook, hay que obtenerlo con una llamada API
+ */
+async function getEmailContentFromResend(emailId: string): Promise<{ text?: string; html?: string } | null> {
+  const resendApiKey = process.env.RESEND_API_KEY
+  
+  if (!resendApiKey) {
+    console.warn('[Email Webhook] RESEND_API_KEY no configurado, no se puede obtener el contenido del email')
+    return null
+  }
+
+  try {
+    console.log(`[Email Webhook] 📥 Obteniendo contenido del email desde Resend API, email_id: ${emailId}`)
+    
+    const response = await fetch(`https://api.resend.com/emails/${emailId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`[Email Webhook] Error al obtener email desde Resend: ${response.status} - ${errorText}`)
+      return null
+    }
+
+    const emailData = await response.json()
+    console.log('[Email Webhook] ✅ Contenido obtenido desde Resend:', {
+      hasText: !!emailData.text,
+      hasHtml: !!emailData.html,
+      textLength: emailData.text?.length || 0,
+      htmlLength: emailData.html?.length || 0,
+    })
+
+    return {
+      text: emailData.text || emailData.body_text || undefined,
+      html: emailData.html || emailData.body_html || undefined,
+    }
+  } catch (error) {
+    console.error('[Email Webhook] Error al obtener contenido desde Resend API:', error)
+    return null
+  }
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   
   try {
     const body = await request.json()
     
-    // Log completo del payload recibido para diagnóstico
-    console.log('[Email Webhook] Received payload:', JSON.stringify(body, null, 2))
+    // Log completo del payload recibido para diagnóstico (ANTES de cualquier procesamiento)
+    console.log('='.repeat(80))
+    console.log('[Email Webhook] 📨 PAYLOAD COMPLETO RECIBIDO:')
+    console.log(JSON.stringify(body, null, 2))
+    console.log('='.repeat(80))
     console.log(`[Email Webhook] Tiempo inicio: ${startTime}ms`)
+    
+    // Análisis inmediato del payload
+    console.log('[Email Webhook] 🔍 ANÁLISIS INMEDIATO:')
+    console.log('  - body.from:', body.from)
+    console.log('  - body.data:', !!body.data)
+    console.log('  - body.payload:', !!body.payload)
+    console.log('  - body.text:', body.text ? `${body.text.substring(0, 50)}... (${body.text.length} chars)` : '(vacío)')
+    console.log('  - body.html:', body.html ? `${body.html.substring(0, 50)}... (${body.html.length} chars)` : '(vacío)')
+    console.log('  - body.subject:', body.subject)
     
     // Verificar que es un webhook válido
     // TODO: Agregar verificación de firma
@@ -148,6 +207,76 @@ export async function POST(request: NextRequest) {
       textPreview: normalizedPayload.text?.substring(0, 100) || '(vacío)',
       htmlPreview: normalizedPayload.html?.substring(0, 100) || '(vacío)',
     })
+    
+    // ⚠️ DIAGNÓSTICO: Si no hay contenido, buscar en campos alternativos
+    if (!normalizedPayload.text && !normalizedPayload.html) {
+      console.warn('[Email Webhook] ⚠️ CONTENIDO NO ENCONTRADO EN PAYLOAD')
+      console.log('[Email Webhook] Campos disponibles en body.data:', Object.keys(body.data || {}))
+      console.log('[Email Webhook] Buscando campos alternativos...')
+      
+      // Buscar en campos alternativos que Resend puede usar
+      const data = body.data || {}
+      if (data.body) {
+        console.log('[Email Webhook] ✅ Encontrado body:', typeof data.body)
+        normalizedPayload.text = typeof data.body === 'string' ? data.body : data.body.text || ''
+        normalizedPayload.html = typeof data.body === 'object' ? data.body.html : ''
+      }
+      if (data.content) {
+        console.log('[Email Webhook] ✅ Encontrado content:', typeof data.content)
+        normalizedPayload.text = typeof data.content === 'string' ? data.content : data.content.text || normalizedPayload.text
+        normalizedPayload.html = typeof data.content === 'object' ? data.content.html : normalizedPayload.html
+      }
+      if (data.body_text) {
+        console.log('[Email Webhook] ✅ Encontrado body_text')
+        normalizedPayload.text = data.body_text
+      }
+      if (data.body_html) {
+        console.log('[Email Webhook] ✅ Encontrado body_html')
+        normalizedPayload.html = data.body_html
+      }
+      if (data.message) {
+        console.log('[Email Webhook] ✅ Encontrado message:', typeof data.message)
+        if (typeof data.message === 'string') {
+          normalizedPayload.text = data.message
+        } else {
+          normalizedPayload.text = data.message.text || normalizedPayload.text
+          normalizedPayload.html = data.message.html || normalizedPayload.html
+        }
+      }
+      
+      console.log('[Email Webhook] Después de buscar campos alternativos:', {
+        hasText: !!normalizedPayload.text && normalizedPayload.text.length > 0,
+        hasHtml: !!normalizedPayload.html && normalizedPayload.html.length > 0,
+        textLength: normalizedPayload.text?.length || 0,
+        htmlLength: normalizedPayload.html?.length || 0,
+      })
+      
+      // Si aún no hay contenido, intentar obtenerlo desde Resend API
+      if (!normalizedPayload.text && !normalizedPayload.html) {
+        const data = body.data || {}
+        const emailId = data.email_id || body.email_id
+        
+        if (emailId) {
+          console.log(`[Email Webhook] 🔄 Obteniendo contenido desde Resend API usando email_id: ${emailId}`)
+          const emailContent = await getEmailContentFromResend(emailId)
+          
+          if (emailContent) {
+            normalizedPayload.text = emailContent.text || normalizedPayload.text
+            normalizedPayload.html = emailContent.html || normalizedPayload.html
+            console.log('[Email Webhook] ✅ Contenido obtenido desde API:', {
+              hasText: !!normalizedPayload.text && normalizedPayload.text.length > 0,
+              hasHtml: !!normalizedPayload.html && normalizedPayload.html.length > 0,
+              textLength: normalizedPayload.text?.length || 0,
+              htmlLength: normalizedPayload.html?.length || 0,
+            })
+          } else {
+            console.warn('[Email Webhook] ⚠️ No se pudo obtener el contenido desde Resend API')
+          }
+        } else {
+          console.warn('[Email Webhook] ⚠️ No se encontró email_id en el payload para obtener el contenido')
+        }
+      }
+    }
     
     // Verificar si este mensaje ya fue procesado (prevenir duplicados)
     if (normalizedPayload.messageId) {
