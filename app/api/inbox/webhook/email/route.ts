@@ -21,7 +21,8 @@ async function getEmailContentFromResend(emailId: string): Promise<{ text?: stri
   try {
     console.log(`[Email Webhook] 📥 Obteniendo contenido del email desde Resend API, email_id: ${emailId}`)
     
-    const response = await fetch(`https://api.resend.com/emails/${emailId}`, {
+    // Resend usa el endpoint específico para emails recibidos (receiving)
+    const response = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${resendApiKey}`,
