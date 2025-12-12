@@ -54,9 +54,58 @@ export class AutoReplyService {
       return
     }
 
-    const text = generateFollowUpMessage({
+    // Obtener información adicional del request para contexto de IA
+    const requestWithDetails = await prisma.request.findUnique({
+      where: { id: request.id },
+      include: {
+        client: {
+          select: {
+            name: true,
+            company: true,
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          take: 10, // Últimos 10 mensajes para contexto
+          select: {
+            direction: true,
+            content: true,
+            createdAt: true,
+          },
+        },
+      },
+    })
+
+    // Preparar contexto para IA
+    const clientInfo = requestWithDetails?.client
+      ? {
+          name: requestWithDetails.client.name,
+          company: requestWithDetails.client.company,
+        }
+      : undefined
+
+    const conversationHistory = requestWithDetails?.messages
+      ? requestWithDetails.messages.map((msg) => ({
+          direction: msg.direction as 'inbound' | 'outbound',
+          content: msg.content,
+          timestamp: msg.createdAt.toISOString(),
+        }))
+      : undefined
+
+    // Determinar el canal
+    const channel = request.source === 'whatsapp' 
+      ? 'whatsapp' as const
+      : request.source === 'email'
+      ? 'email' as const
+      : 'web' as const
+
+    const text = await generateFollowUpMessage({
       categoryRule,
       missingFields,
+      requestContent: request.rawContent || request.content || '',
+      clientInfo,
+      conversationHistory,
+      channel,
     })
 
     if (!text) {
