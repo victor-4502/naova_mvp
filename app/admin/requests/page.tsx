@@ -40,6 +40,7 @@ interface Request {
   category?: string | null
   urgency: string
   createdAt: string
+  updatedAt?: string
   client?: {
     id: string
     name: string | null
