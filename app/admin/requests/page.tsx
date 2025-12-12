@@ -326,7 +326,7 @@ export default function AdminRequestsPage() {
                 setGeneratingMessages(prev => ({ ...prev, [req.id]: true }))
                 generateFollowUpMessage({
                   categoryRule,
-                  missingFields: rules.missingFields,
+                  missingFields: rules.missingFields || [],
                   requestContent: req.rawContent,
                   clientInfo: req.client ? {
                     name: req.client.name,
