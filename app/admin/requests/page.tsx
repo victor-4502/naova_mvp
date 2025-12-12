@@ -23,6 +23,8 @@ interface MessagePreview {
   id: string
   direction: 'inbound' | 'outbound'
   content: string
+  subject?: string | null
+  source?: string
   createdAt: string
   from?: string | null
   to?: string | null
@@ -321,6 +323,14 @@ export default function AdminRequestsPage() {
                                     {new Date(msg.createdAt).toLocaleString()}
                                   </span>
                                 </div>
+                                {/* Mostrar asunto si es email y tiene subject */}
+                                {msg.source === 'email' && msg.subject && (
+                                  <div className="mb-1">
+                                    <span className="text-xs font-semibold text-gray-800">
+                                      {msg.subject}
+                                    </span>
+                                  </div>
+                                )}
                                 <p className="line-clamp-2 text-gray-700">{msg.content}</p>
                               </div>
                             </div>

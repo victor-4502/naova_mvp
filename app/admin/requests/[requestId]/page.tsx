@@ -348,6 +348,17 @@ export default function RequestDetailPage() {
                           • {new Date(message.createdAt).toLocaleString()}
                         </span>
                       </div>
+                      {/* Mostrar asunto si es email y tiene subject */}
+                      {message.source === 'email' && message.subject && (
+                        <div className={`mb-2 pb-2 border-b ${isOutbound ? 'border-white/20' : 'border-gray-300'}`}>
+                          <div className={`text-xs font-medium mb-1 ${isOutbound ? 'text-white/90' : 'text-gray-600'}`}>
+                            Asunto:
+                          </div>
+                          <div className={`text-sm font-semibold ${isOutbound ? 'text-white' : 'text-gray-900'}`}>
+                            {message.subject}
+                          </div>
+                        </div>
+                      )}
                       <p className="text-sm whitespace-pre-line">{message.content}</p>
                       {!message.processed && isOutbound && (
                         <div className="mt-2 text-xs opacity-75">
