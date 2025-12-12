@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Inbox, Filter, RefreshCcw, ArrowLeft } from 'lucide-react'
+import { Inbox, Filter, RefreshCcw, ArrowLeft, Clock, TrendingUp, Calendar } from 'lucide-react'
 import { generateFollowUpMessage } from '@/lib/services/inbox/FollowUpGenerator'
 import { findCategoryRule, type FieldId } from '@/lib/rules/requestSchemas'
 import { getConversationStatus } from '@/lib/utils/conversationStatus'
@@ -73,6 +73,7 @@ export default function AdminRequestsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedSource, setSelectedSource] = useState<RequestSource | 'all'>('all')
+  const [sortBy, setSortBy] = useState<'recent_activity' | 'oldest' | 'newest'>('recent_activity')
   const [autoReplyState, setAutoReplyState] = useState<Record<string, boolean>>({})
   const [updatingAutoReply, setUpdatingAutoReply] = useState<Record<string, boolean>>({})
 
@@ -80,7 +81,7 @@ export default function AdminRequestsPage() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/admin/requests', {
+      const response = await fetch(`/api/admin/requests?sortBy=${sortBy}`, {
         credentials: 'include',
       })
       const data = await response.json()
@@ -109,7 +110,7 @@ export default function AdminRequestsPage() {
 
   useEffect(() => {
     loadRequests()
-  }, [])
+  }, [sortBy])
 
   const handleToggleAutoReply = async (request: Request, enabled: boolean) => {
     setUpdatingAutoReply((prev) => ({ ...prev, [request.id]: true }))
@@ -139,10 +140,27 @@ export default function AdminRequestsPage() {
     }
   }
 
+  // Filtrar por fuente
   const filteredRequests =
     selectedSource === 'all'
       ? requests
       : requests.filter((req) => req.source === selectedSource)
+  
+  // Ordenar según el criterio seleccionado (el API ya ordena, pero esto es un respaldo)
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    if (sortBy === 'recent_activity') {
+      // Ordenar por última actividad (updatedAt) - más reciente primero
+      const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt).getTime()
+      const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt).getTime()
+      return bTime - aTime
+    } else if (sortBy === 'oldest') {
+      // Ordenar por fecha de creación - más antiguos primero
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    } else {
+      // newest: Ordenar por fecha de creación - más nuevos primero
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    }
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100">
@@ -183,38 +201,90 @@ export default function AdminRequestsPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Filtros */}
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-gray-600">
-            <Filter className="h-4 w-4" />
-            <span className="text-sm font-medium">Filtrar por canal:</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedSource('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                selectedSource === 'all'
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              Todos
-            </button>
-            {(Object.keys(SOURCE_LABELS) as RequestSource[]).map((source) => (
+        {/* Filtros y Ordenamiento */}
+        <div className="mb-6 space-y-4">
+          {/* Filtro por canal */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-gray-600">
+              <Filter className="h-4 w-4" />
+              <span className="text-sm font-medium">Filtrar por canal:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button
-                key={source}
                 type="button"
-                onClick={() => setSelectedSource(source)}
+                onClick={() => setSelectedSource('all')}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                  selectedSource === source
-                    ? `${SOURCE_COLORS[source]} border-transparent`
+                  selectedSource === 'all'
+                    ? 'bg-primary text-white border-primary'
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                {SOURCE_LABELS[source]}
+                Todos
               </button>
-            ))}
+              {(Object.keys(SOURCE_LABELS) as RequestSource[]).map((source) => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => setSelectedSource(source)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                    selectedSource === source
+                      ? `${SOURCE_COLORS[source]} border-transparent`
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {SOURCE_LABELS[source]}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Ordenamiento */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-gray-600">
+              <Clock className="h-4 w-4" />
+              <span className="text-sm font-medium">Ordenar por:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSortBy('recent_activity')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  sortBy === 'recent_activity'
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+                title="Mensajes con actividad más reciente primero"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+                Actividad Reciente
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy('oldest')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  sortBy === 'oldest'
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+                title="Requests más antiguos primero (necesitan seguimiento)"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                Más Antiguos
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy('newest')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  sortBy === 'newest'
+                    ? 'bg-green-500 text-white border-green-500'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+                title="Requests más nuevos primero"
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                Más Nuevos
+              </button>
+            </div>
           </div>
         </div>
 
@@ -239,7 +309,7 @@ export default function AdminRequestsPage() {
               </p>
             </div>
           ) : (
-            filteredRequests.map((req) => {
+            sortedRequests.map((req) => {
               const rules = req.rules
               const categoryRule = rules?.categoryRuleId
                 ? findCategoryRule(rules.categoryRuleId)

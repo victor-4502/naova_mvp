@@ -16,8 +16,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
+    // Obtener parámetro de ordenamiento
+    const { searchParams } = new URL(request.url)
+    const sortBy = searchParams.get('sortBy') || 'recent_activity'
+
     // Verificar que la tabla Request existe y obtener requests
     try {
+      // Determinar el ordenamiento según el parámetro
+      let orderBy: any = { createdAt: 'desc' } // Default
+      
+      if (sortBy === 'recent_activity') {
+        orderBy = { updatedAt: 'desc' } // Por última actividad
+      } else if (sortBy === 'oldest') {
+        orderBy = { createdAt: 'asc' } // Más antiguos primero
+      } else if (sortBy === 'newest') {
+        orderBy = { createdAt: 'desc' } // Más nuevos primero
+      }
+
       const requests = await prisma.request.findMany({
         include: {
           client: {
@@ -45,9 +60,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy,
         take: 100,
       })
 
@@ -67,6 +80,7 @@ export async function GET(request: NextRequest) {
               category: r.category,
               urgency: r.urgency,
               createdAt: r.createdAt.toISOString(),
+              updatedAt: r.updatedAt.toISOString(),
               client: r.client,
               rules,
               messages: r.messages.map((m) => ({
