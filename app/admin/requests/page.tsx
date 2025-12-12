@@ -77,6 +77,8 @@ export default function AdminRequestsPage() {
   const [sortBy, setSortBy] = useState<'recent_activity' | 'oldest' | 'newest'>('recent_activity')
   const [autoReplyState, setAutoReplyState] = useState<Record<string, boolean>>({})
   const [updatingAutoReply, setUpdatingAutoReply] = useState<Record<string, boolean>>({})
+  const [suggestedMessages, setSuggestedMessages] = useState<Record<string, string>>({})
+  const [generatingMessages, setGeneratingMessages] = useState<Record<string, boolean>>({})
 
   const loadRequests = async () => {
     setLoading(true)
@@ -315,18 +317,45 @@ export default function AdminRequestsPage() {
               const categoryRule = rules?.categoryRuleId
                 ? findCategoryRule(rules.categoryRuleId)
                 : null
-              const suggestedMessage =
-                rules && categoryRule && rules.missingFields && rules.missingFields.length > 0
-                  ? generateFollowUpMessage({
-                      categoryRule,
-                      missingFields: rules.missingFields,
-                    }) || ''
-                  : ''
+              
+              // Generar mensaje sugerido de forma async si no está generado
+              const needsMessage = rules && categoryRule && rules.missingFields && rules.missingFields.length > 0 &&
+                (req.status === 'incomplete_information' || req.pipelineStage === 'needs_info')
+              
+              if (needsMessage && !suggestedMessages[req.id] && !generatingMessages[req.id]) {
+                setGeneratingMessages(prev => ({ ...prev, [req.id]: true }))
+                generateFollowUpMessage({
+                  categoryRule,
+                  missingFields: rules.missingFields,
+                  requestContent: req.rawContent,
+                  clientInfo: req.client ? {
+                    name: req.client.name,
+                    company: req.client.company || undefined,
+                  } : undefined,
+                  channel: req.source === 'whatsapp' ? 'whatsapp' : req.source === 'email' ? 'email' : 'web',
+                }).then((message) => {
+                  if (message) {
+                    setSuggestedMessages(prev => ({ ...prev, [req.id]: message }))
+                  }
+                  setGeneratingMessages(prev => {
+                    const updated = { ...prev }
+                    delete updated[req.id]
+                    return updated
+                  })
+                }).catch((error) => {
+                  console.error('Error generando mensaje sugerido:', error)
+                  setGeneratingMessages(prev => {
+                    const updated = { ...prev }
+                    delete updated[req.id]
+                    return updated
+                  })
+                })
+              }
+              
+              const suggestedMessage = suggestedMessages[req.id] || ''
+              const isGenerating = generatingMessages[req.id]
 
-              const showFollowUpSection =
-                !!suggestedMessage &&
-                (req.status === 'incomplete_information' ||
-                  req.pipelineStage === 'needs_info')
+              const showFollowUpSection = needsMessage && (!!suggestedMessage || isGenerating)
 
               // Obtener estado de conversación
               const conversationStatus = getConversationStatus({
@@ -464,28 +493,37 @@ export default function AdminRequestsPage() {
                       </div>
 
                       <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                        <textarea
-                          readOnly
-                          className="w-full text-xs text-gray-800 bg-transparent border-none resize-none focus:ring-0"
-                          value={suggestedMessage}
-                          rows={Math.min(8, suggestedMessage.split('\n').length + 1)}
-                        />
-                        <div className="flex justify-between items-center mt-2 text-[11px] text-gray-500">
-                          <span>
-                            Esta respuesta se enviará preferentemente por el mismo canal donde el
-                            cliente escribió (WhatsApp, email o plataforma).
-                          </span>
-                          <button
-                            type="button"
-                            className="text-xs text-purple-600 hover:text-purple-800"
-                            onClick={() => {
-                              navigator.clipboard.writeText(suggestedMessage)
-                              alert('Mensaje copiado al portapapeles.')
-                            }}
-                          >
-                            Copiar texto
-                          </button>
-                        </div>
+                        {isGenerating ? (
+                          <div className="flex items-center justify-center py-4 text-xs text-gray-500">
+                            <RefreshCcw className="h-3 w-3 mr-2 animate-spin" />
+                            Generando mensaje personalizado...
+                          </div>
+                        ) : (
+                          <>
+                            <textarea
+                              readOnly
+                              className="w-full text-xs text-gray-800 bg-transparent border-none resize-none focus:ring-0"
+                              value={suggestedMessage}
+                              rows={Math.min(8, suggestedMessage.split('\n').length + 1)}
+                            />
+                            <div className="flex justify-between items-center mt-2 text-[11px] text-gray-500">
+                              <span>
+                                Esta respuesta se enviará preferentemente por el mismo canal donde el
+                                cliente escribió (WhatsApp, email o plataforma).
+                              </span>
+                              <button
+                                type="button"
+                                className="text-xs text-purple-600 hover:text-purple-800"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(suggestedMessage)
+                                  alert('Mensaje copiado al portapapeles.')
+                                }}
+                              >
+                                Copiar texto
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
