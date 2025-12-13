@@ -91,19 +91,48 @@ export async function generateFollowUpMessage(input: FollowUpInput): Promise<str
     }
   }
 
-  // Fallback: usar plantilla predefinida
+  // Fallback: usar plantilla predefinida (pero con variación)
   console.log('[FollowUpGenerator] Usando plantilla predefinida (fallback)')
-  return generateTemplateMessage(categoryRule, missingFieldRules)
+  return generateTemplateMessage(
+    categoryRule, 
+    missingFieldRules, 
+    presentFields,
+    previousAutoReplyCount
+  )
 }
 
 /**
  * Genera mensaje usando plantilla predefinida (fallback cuando IA no está disponible)
+ * Ahora con variación según número de mensajes previos
  */
 function generateTemplateMessage(
   categoryRule: RequestCategoryRule,
-  missingFieldRules: Array<{ id: string; label: string; description: string; examples?: string[] }>
+  missingFieldRules: Array<{ id: string; label: string; description: string; examples?: string[] }>,
+  presentFields?: Array<{ id: string; label: string; description: string }>,
+  previousAutoReplyCount: number = 0
 ): string {
-  const intro = `¡Gracias por tu mensaje! Detecté que quieres hacer un requerimiento relacionado con **${categoryRule.name}**. Para poder cotizarlo bien con proveedores, me falta lo siguiente:`
+  // Variar la introducción según el número de mensajes previos
+  let intro = ''
+  const presentFieldsList = presentFields?.map(f => f.label).join(', ') || ''
+  
+  if (previousAutoReplyCount === 0) {
+    // Primer mensaje
+    intro = `¡Gracias por tu mensaje! Detecté que quieres hacer un requerimiento relacionado con **${categoryRule.name}**. Para poder cotizarlo bien con proveedores, me falta lo siguiente:`
+  } else if (previousAutoReplyCount === 1) {
+    // Segundo mensaje
+    if (presentFieldsList) {
+      intro = `Perfecto, ya tengo ${presentFieldsList}. Para continuar, solo me falta conocer:`
+    } else {
+      intro = `Gracias por la información. Para poder ayudarte mejor, aún me falta lo siguiente:`
+    }
+  } else {
+    // Tercer mensaje o más
+    if (presentFieldsList) {
+      intro = `Disculpa, pero aún me falta ${missingFieldRules.length === 1 ? 'conocer' : 'conocer algunos datos'}. Para continuar necesito:`
+    } else {
+      intro = `Para poder ayudarte mejor, todavía necesito lo siguiente:`
+    }
+  }
 
   const bulletLines = missingFieldRules.map((field) => {
     const examples =
@@ -113,8 +142,15 @@ function generateTemplateMessage(
     return `- **${field.label}**: ${field.description}.${examples}`
   })
 
-  const outro =
-    'Con esa información ya puedo estructurar bien el requerimiento y moverlo con los proveedores adecuados.'
+  // Variar el cierre también
+  let outro = ''
+  if (previousAutoReplyCount === 0) {
+    outro = 'Con esa información ya puedo estructurar bien el requerimiento y moverlo con los proveedores adecuados.'
+  } else if (previousAutoReplyCount === 1) {
+    outro = '¡Gracias por tu ayuda!'
+  } else {
+    outro = 'Con esa información podremos darte las mejores opciones.'
+  }
 
   return [intro, '', ...bulletLines, '', outro].join('\n')
 }
