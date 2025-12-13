@@ -86,8 +86,10 @@ export async function POST(
       )
     }
 
+    const request = message.request // Guardar en variable para TypeScript
+
     // Obtener contacto del destinatario
-    const toContact = message.to || message.request.messages[0]?.from || message.request.client?.email || message.request.client?.phone
+    const toContact = message.to || request.messages[0]?.from || request.client?.email || request.client?.phone
 
     if (!toContact || toContact === 'pendiente') {
       return NextResponse.json(
@@ -146,7 +148,7 @@ export async function POST(
         })
         
         // Obtener información del email original para threading
-        const originalMessage = message.request.messages[0]
+        const originalMessage = request.messages[0]
         const originalSubject = message.subject || originalMessage?.subject || `Requerimiento ${params.requestId}`
         
         const result = await EmailService.sendReply(
