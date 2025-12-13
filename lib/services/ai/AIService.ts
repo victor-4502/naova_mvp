@@ -205,7 +205,7 @@ function buildPrompt(options: GenerateMessageOptions): string {
   prompt += `CANAL: ${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Plataforma web'}\n\n`
 
   // Número de mensajes automáticos previos
-  prompt += `NÚMERO DE MENSAJES AUTOMÁTICOS YA ENVIADOS: ${previousAutoReplyCount}\n\n`
+  prompt += `NÚMERO DE MENSAJES AUTOMÁTICOS YA ENVIADOS: ${previousCount}\n\n`
 
   // Instrucciones finales - MEJORADAS para variar según el número de mensajes
   prompt += `INSTRUCCIONES PARA GENERAR EL MENSAJE (MUY IMPORTANTE):\n`
