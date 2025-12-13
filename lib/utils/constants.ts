@@ -143,7 +143,10 @@ export const CATEGORY_MAPPINGS: Record<string, string[]> = {
   'herramientas': [
     'tools', 'equipos', 'equipment',
     'tornillo', 'tornillos', 'tuerca', 'tuercas', 'arandela', 'arandelas',
-    'perno', 'pernos', 'herramienta', 'herramientas'
+    'perno', 'pernos', 'herramienta', 'herramientas',
+    'máquina', 'maquina', 'máquinas', 'maquinas',
+    'sellado', 'empaque', 'empaquetado', 'empaquetadora',
+    'bolsas', 'selladora', 'sellador'
   ],
   'seguridad': ['safety', 'epi', 'ppe', 'equipos de seguridad'],
   'consumibles': ['consumables', 'supplies', 'insumos'],

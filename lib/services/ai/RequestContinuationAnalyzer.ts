@@ -92,19 +92,27 @@ ${requestSummary}
 NUEVO MENSAJE DEL CLIENTE:
 "${newMessage}"
 
-INSTRUCCIONES:
-1. Analiza el tema principal del request existente
-2. Analiza el tema del nuevo mensaje
-3. Determina si el nuevo mensaje es:
-   - Una **CONTINUACIÓN**: Respuesta a una pregunta previa, información adicional solicitada, aclaración sobre el mismo requerimiento
-   - Un **NUEVO REQUERIMIENTO**: Cambio de tema, solicitud diferente, producto/servicio distinto
+INSTRUCCIONES CRÍTICAS:
+1. **Si el último mensaje de Naova es una PREGUNTA** y el nuevo mensaje del cliente parece una RESPUESTA directa → ES CONTINUACIÓN
+   - Ejemplo: Naova pregunta "¿Qué equipo requiere el servicio?" y cliente responde "Máquina de sellado" → CONTINUACIÓN
+   - Ejemplo: Naova pregunta "¿Dónde se encuentra el equipo?" y cliente responde "Planta Monterrey" → CONTINUACIÓN
+2. Si el nuevo mensaje es corto (< 20 palabras) y contiene información que responde a una pregunta previa → ES CONTINUACIÓN
+3. Analiza el tema principal del request existente
+4. Determina si el nuevo mensaje es:
+   - Una **CONTINUACIÓN**: Respuesta a pregunta previa, información adicional solicitada, aclaración sobre el mismo requerimiento
+   - Un **NUEVO REQUERIMIENTO**: Cambio completo de tema, solicitud completamente diferente, producto/servicio no relacionado
 
-EJEMPLOS:
-- CONTINUACIÓN: "De acero inoxidable" (respuesta a "¿qué tipo de tornillos?")
-- CONTINUACIÓN: "Planta Monterrey" (respuesta a "¿dónde se entrega?")
-- CONTINUACIÓN: "Sí, también necesito 50 más" (ampliación del mismo pedido)
-- NUEVO REQUERIMIENTO: "Ahora también necesito una cotización de montacargas" (mientras el request original era de tornillos)
-- NUEVO REQUERIMIENTO: "Olvídalo, mejor necesito servicio de mantenimiento" (cambio completo de tema)
+EJEMPLOS DE CONTINUACIÓN:
+- "Máquina de sellado de bolsas" (respuesta a "¿Qué equipo requiere el servicio?")
+- "De acero inoxidable" (respuesta a "¿qué tipo de tornillos?")
+- "Planta Monterrey" (respuesta a "¿dónde se entrega?")
+- "Mantenimiento preventivo" (respuesta a "¿Qué tipo de servicio?")
+- "Sí, también necesito 50 más" (ampliación del mismo pedido)
+
+EJEMPLOS DE NUEVO REQUERIMIENTO:
+- "Ahora también necesito una cotización de montacargas" (mientras el request original era de tornillos - cambio de producto)
+- "Olvídalo, mejor necesito servicio de mantenimiento" (cambio completo de tema - "olvídalo" indica cancelación)
+- "Ya no necesito eso, ahora quiero tornillos" (cancelación explícita + nuevo tema)
 
 Responde ÚNICAMENTE con un objeto JSON que contenga:
 - "isContinuation": true o false

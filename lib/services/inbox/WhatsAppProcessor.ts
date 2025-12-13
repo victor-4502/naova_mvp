@@ -278,6 +278,11 @@ export class WhatsAppProcessor {
       if (matchingMessage) {
         // Si tenemos contenido del nuevo mensaje, usar IA para determinar si es continuación
         if (newMessageContent && newMessageContent.trim().length > 0) {
+          // Obtener último mensaje de Naova para verificar si es pregunta
+          const lastNaovaMsg = request.messages
+            .filter(m => m.direction === 'outbound')
+            .pop()?.content || ''
+          
           // Construir contexto del request para análisis de IA
           const requestContext: RequestContext = {
             id: request.id,
@@ -301,8 +306,17 @@ export class WhatsAppProcessor {
             reason: analysis.reason,
           })
           
-          // Solo continuar si la IA dice que es continuación con confianza >= 0.6
-          if (analysis.isContinuation && analysis.confidence >= 0.6) {
+          // Si el último mensaje de Naova es una pregunta y el nuevo mensaje es corto, 
+          // es muy probable que sea una respuesta (continuación)
+          const isLikelyResponseToQuestion = lastNaovaMsg && 
+            (lastNaovaMsg.includes('?') || lastNaovaMsg.toLowerCase().includes('qué') || lastNaovaMsg.toLowerCase().includes('donde') || lastNaovaMsg.toLowerCase().includes('cuál')) &&
+            newMessageContent.trim().split(/\s+/).length < 20 // Mensaje corto (menos de 20 palabras)
+          
+          // Bajar umbral si parece una respuesta a pregunta
+          const confidenceThreshold = isLikelyResponseToQuestion ? 0.5 : 0.6
+          
+          // Solo continuar si la IA dice que es continuación con confianza suficiente
+          if (analysis.isContinuation && analysis.confidence >= confidenceThreshold) {
             console.log(`[WhatsAppProcessor] ✅ Request activo confirmado por IA: ${request.id}`)
             return { id: request.id }
           } else {
@@ -399,6 +413,11 @@ export class WhatsAppProcessor {
           })
           
           if (requestWithMessages) {
+            // Obtener último mensaje de Naova para verificar si es pregunta
+            const lastNaovaMsg = requestWithMessages.messages
+              .filter(m => m.direction === 'outbound')
+              .pop()?.content || ''
+            
             // Construir contexto del request para análisis de IA
             const requestContext: RequestContext = {
               id: requestWithMessages.id,
@@ -422,8 +441,17 @@ export class WhatsAppProcessor {
               reason: analysis.reason,
             })
             
-            // Solo continuar si la IA dice que es continuación con confianza >= 0.6
-            if (analysis.isContinuation && analysis.confidence >= 0.6) {
+            // Si el último mensaje de Naova es una pregunta y el nuevo mensaje es corto, 
+            // es muy probable que sea una respuesta (continuación)
+            const isLikelyResponseToQuestion = lastNaovaMsg && 
+              (lastNaovaMsg.includes('?') || lastNaovaMsg.toLowerCase().includes('qué') || lastNaovaMsg.toLowerCase().includes('donde') || lastNaovaMsg.toLowerCase().includes('cuál')) &&
+              newMessageContent.trim().split(/\s+/).length < 20 // Mensaje corto (menos de 20 palabras)
+            
+            // Bajar umbral si parece una respuesta a pregunta
+            const confidenceThreshold = isLikelyResponseToQuestion ? 0.5 : 0.6
+            
+            // Solo continuar si la IA dice que es continuación con confianza suficiente
+            if (analysis.isContinuation && analysis.confidence >= confidenceThreshold) {
               console.log(`[WhatsAppProcessor] ✅ Request activo confirmado por IA (por número): ${request.id}`)
               return { id: request.id }
             } else {
