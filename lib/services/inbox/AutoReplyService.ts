@@ -35,6 +35,7 @@ export class AutoReplyService {
     }
 
     const missingFields = (rules.missingFields || []) as FieldId[]
+    const presentFields = (rules.presentFields || []) as FieldId[]
     const categoryRuleId = rules.categoryRuleId as string | null | undefined
 
     console.log('[AutoReply] Checking request:', {
@@ -108,9 +109,15 @@ export class AutoReplyService {
       ? 'email' as const
       : 'web' as const
 
+    // Obtener información de campos presentes para contexto de IA
+    const presentFieldRules = presentFields
+      .map((fieldId) => categoryRule.fields.find((f) => f.id === fieldId))
+      .filter((f) => !!f) as Array<{ id: string; label: string; description: string }>
+
     const text = await generateFollowUpMessage({
       categoryRule,
       missingFields,
+      presentFields: presentFieldRules.length > 0 ? presentFieldRules : undefined,
       requestContent: request.rawContent || request.content || '',
       clientInfo,
       conversationHistory,

@@ -36,6 +36,15 @@ export interface GenerateMessageOptions {
   }>
   
   /**
+   * Campos que ya están presentes en el request (opcional)
+   */
+  presentFields?: Array<{
+    id: string
+    label: string
+    description: string
+  }>
+  
+  /**
    * Información del cliente (opcional)
    */
   clientInfo?: {
@@ -128,7 +137,7 @@ INSTRUCCIONES:
  * Construye el prompt con todo el contexto necesario
  */
 function buildPrompt(options: GenerateMessageOptions): string {
-  const { requestContent, category, missingFields, clientInfo, conversationHistory, channel } = options
+  const { requestContent, category, missingFields, presentFields, clientInfo, conversationHistory, channel } = options
 
   let prompt = `Necesito generar un mensaje de seguimiento para un cliente que hizo un requerimiento incompleto.\n\n`
 
@@ -147,22 +156,31 @@ function buildPrompt(options: GenerateMessageOptions): string {
   // Categoría del request
   prompt += `CATEGORÍA DEL REQUERIMIENTO: ${category}\n\n`
 
-  // Contenido del request
-  prompt += `MENSAJE ORIGINAL DEL CLIENTE:\n"${requestContent}"\n\n`
-
-  // Historial de conversación (si existe)
+  // Historial de conversación (si existe) - esto es CRUCIAL para entender el contexto
   if (conversationHistory && conversationHistory.length > 0) {
-    prompt += `HISTORIAL DE LA CONVERSACIÓN:\n`
-    conversationHistory.slice(-5).forEach((msg, idx) => {
+    prompt += `HISTORIAL COMPLETO DE LA CONVERSACIÓN (orden cronológico):\n`
+    conversationHistory.forEach((msg, idx) => {
       const role = msg.direction === 'inbound' ? 'Cliente' : 'Naova'
       const date = new Date(msg.timestamp).toLocaleString('es-MX')
       prompt += `${idx + 1}. [${date}] ${role}: "${msg.content}"\n`
     })
     prompt += `\n`
+  } else {
+    // Si no hay historial, usar el contenido original
+    prompt += `MENSAJE DEL CLIENTE:\n"${requestContent}"\n\n`
+  }
+
+  // Campos que YA están presentes (información importante para contexto)
+  if (presentFields && presentFields.length > 0) {
+    prompt += `INFORMACIÓN QUE EL CLIENTE YA PROPORCIONÓ:\n`
+    presentFields.forEach((field) => {
+      prompt += `- ${field.label}: ${field.description}\n`
+    })
+    prompt += `\n`
   }
 
   // Campos faltantes
-  prompt += `INFORMACIÓN QUE FALTA:\n`
+  prompt += `INFORMACIÓN QUE TODAVÍA FALTA:\n`
   missingFields.forEach((field, idx) => {
     prompt += `${idx + 1}. ${field.label}: ${field.description}`
     if (field.examples && field.examples.length > 0) {
@@ -175,18 +193,25 @@ function buildPrompt(options: GenerateMessageOptions): string {
   // Canal de comunicación
   prompt += `CANAL: ${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Plataforma web'}\n\n`
 
-  // Instrucciones finales
-  prompt += `GENERA UN MENSAJE que:\n`
-  prompt += `- Agradezca al cliente por su mensaje\n`
-  prompt += `- Mencione que detectaste que necesita ${category}\n`
-  prompt += `- Liste de manera clara y amigable qué información falta\n`
-  prompt += `- Proporcione ejemplos cuando sea útil\n`
-  prompt += `- Sea apropiado para el canal ${channel}\n`
-  if (conversationHistory && conversationHistory.length > 0) {
-    prompt += `- Haga referencia al contexto de la conversación cuando sea relevante\n`
-  }
-  prompt += `- Termine de manera profesional invitando a proporcionar la información faltante\n\n`
-  prompt += `IMPORTANTE: El mensaje debe ser natural, conversacional y profesional. No uses formato markdown excesivo.`
+  // Instrucciones finales - MEJORADAS para que analice el historial
+  prompt += `INSTRUCCIONES PARA GENERAR EL MENSAJE:\n`
+  prompt += `1. Analiza el historial de conversación para identificar qué información el cliente YA proporcionó\n`
+  prompt += `2. Solo menciona y solicita los campos que están en "INFORMACIÓN QUE TODAVÍA FALTA"\n`
+  prompt += `3. NO vuelvas a pedir información que ya está en "INFORMACIÓN QUE EL CLIENTE YA PROPORCIONÓ"\n`
+  prompt += `4. Si el cliente ya mencionó algo en mensajes anteriores, haz referencia a eso de manera natural\n`
+  prompt += `5. Sé conciso: solo pide lo que realmente falta, sin repetir lo que ya sabes\n`
+  prompt += `6. Mantén un tono amigable y profesional, apropiado para ${channel}\n`
+  prompt += `7. Si hay múltiples campos faltantes, enuméralos de manera clara\n`
+  prompt += `8. Proporciona ejemplos solo cuando sean útiles\n\n`
+  
+  prompt += `EJEMPLO CORRECTO:\n`
+  prompt += `Si el cliente ya mencionó "máquina de inyección plásticos" y "mantenimiento correctivo", y solo falta la ubicación, di:\n`
+  prompt += `"Perfecto, ya tengo que necesitas mantenimiento correctivo para una máquina de inyección plásticos. Solo me falta saber dónde se encuentra el equipo (ubicación)."\n\n`
+  
+  prompt += `EJEMPLO INCORRECTO:\n`
+  prompt += `NO repitas toda la lista completa de campos, solo menciona lo que falta.\n\n`
+  
+  prompt += `IMPORTANTE: El mensaje debe ser natural, conversacional y profesional. Evita formato markdown excesivo.`
 
   return prompt
 }

@@ -6,6 +6,14 @@ export interface FollowUpInput {
   categoryRule: RequestCategoryRule | null
   missingFields: FieldId[]
   /**
+   * Campos que ya están presentes (opcional, para contexto de IA)
+   */
+  presentFields?: Array<{
+    id: string
+    label: string
+    description: string
+  }>
+  /**
    * Contenido original del request (para contexto de IA)
    */
   requestContent?: string
@@ -35,7 +43,7 @@ export interface FollowUpInput {
  * o plantilla predefinida como fallback
  */
 export async function generateFollowUpMessage(input: FollowUpInput): Promise<string | null> {
-  const { categoryRule, missingFields, requestContent, clientInfo, conversationHistory, channel = 'web' } = input
+  const { categoryRule, missingFields, presentFields, requestContent, clientInfo, conversationHistory, channel = 'web' } = input
 
   if (!categoryRule || missingFields.length === 0) {
     // Nada que pedir
@@ -60,6 +68,11 @@ export async function generateFollowUpMessage(input: FollowUpInput): Promise<str
         label: f.label,
         description: f.description,
         examples: f.examples,
+      })),
+      presentFields: presentFields?.map((f) => ({
+        id: f.id,
+        label: f.label,
+        description: f.description,
       })),
       clientInfo,
       conversationHistory,
