@@ -148,7 +148,9 @@ INSTRUCCIONES:
  * Construye el prompt con todo el contexto necesario
  */
 function buildPrompt(options: GenerateMessageOptions): string {
-  const { requestContent, category, missingFields, presentFields, clientInfo, conversationHistory, channel } = options
+  const { requestContent, category, missingFields, presentFields, clientInfo, conversationHistory, channel, previousAutoReplyCount = 0 } = options
+
+  const previousCount = previousAutoReplyCount || 0
 
   let prompt = `Necesito generar un mensaje de seguimiento para un cliente que hizo un requerimiento incompleto.\n\n`
 
@@ -225,18 +227,18 @@ function buildPrompt(options: GenerateMessageOptions): string {
   prompt += `11. El mensaje debe sonar como si lo escribiera una persona real, no un robot\n\n`
   
   prompt += `EJEMPLOS DE MENSAJES:\n\n`
-  prompt += `PRIMER MENSAJE (previousAutoReplyCount = 0):\n`
+  prompt += `PRIMER MENSAJE (previousCount = 0):\n`
   prompt += `"¡Hola! Gracias por contactarnos. Veo que necesitas un servicio de ${category}. Para poder cotizarlo con nuestros proveedores, me ayudarías compartiendo:\n`
   prompt += `- [campo que falta]\n`
   prompt += `- [campo que falta]\n`
   prompt += `Con esta información podremos ayudarte mejor."\n\n`
   
-  prompt += `SEGUNDO MENSAJE (previousAutoReplyCount = 1):\n`
+  prompt += `SEGUNDO MENSAJE (previousCount = 1):\n`
   prompt += `"Perfecto, ya tengo que necesitas [información que ya proporcionó]. Para continuar, solo me falta conocer:\n`
   prompt += `- [campo que falta]\n`
   prompt += `¡Gracias!"\n\n`
   
-  prompt += `TERCER MENSAJE O MÁS (previousAutoReplyCount >= 2):\n`
+  prompt += `TERCER MENSAJE O MÁS (previousCount >= 2):\n`
   prompt += `"Disculpa, pero aún me falta conocer [campo que falta]. Con esa información podremos darte las mejores opciones de proveedores."\n\n`
   
   prompt += `IMPORTANTE: Sé natural, conversacional y humano. Evita sonar repetitivo o robótico. NO uses la misma introducción en todos los mensajes.`
