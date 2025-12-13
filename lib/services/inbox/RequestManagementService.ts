@@ -44,7 +44,7 @@ export async function analyzeAndManageRequest(requestId: string): Promise<Reques
   }
 
   // Obtener otros requests activos del mismo cliente (para detectar duplicados)
-  const allActiveRequests = request.clientId
+  const allActiveRequestsRaw = request.clientId
     ? await prisma.request.findMany({
         where: {
           clientId: request.clientId,
@@ -65,6 +65,24 @@ export async function analyzeAndManageRequest(requestId: string): Promise<Reques
         },
       })
     : []
+
+  // Convertir a formato RequestAnalysisContext (Date → string ISO)
+  const allActiveRequests: RequestAnalysisContext[] = allActiveRequestsRaw.map(req => ({
+    id: req.id,
+    category: req.category,
+    subcategory: req.subcategory,
+    status: req.status,
+    pipelineStage: req.pipelineStage,
+    rawContent: req.rawContent || '',
+    createdAt: req.createdAt.toISOString(),
+    updatedAt: req.updatedAt.toISOString(),
+    messages: req.messages.map(msg => ({
+      direction: msg.direction as 'inbound' | 'outbound',
+      content: msg.content,
+      timestamp: msg.createdAt.toISOString(),
+    })),
+    client: req.client,
+  }))
 
   // Construir contexto para la IA
   const context: RequestAnalysisContext = {
@@ -130,7 +148,7 @@ export async function analyzeRequestOnly(requestId: string): Promise<RequestMana
   }
 
   // Obtener otros requests activos del mismo cliente
-  const allActiveRequests = request.clientId
+  const allActiveRequestsRaw = request.clientId
     ? await prisma.request.findMany({
         where: {
           clientId: request.clientId,
@@ -151,6 +169,24 @@ export async function analyzeRequestOnly(requestId: string): Promise<RequestMana
         },
       })
     : []
+
+  // Convertir a formato RequestAnalysisContext (Date → string ISO)
+  const allActiveRequests: RequestAnalysisContext[] = allActiveRequestsRaw.map(req => ({
+    id: req.id,
+    category: req.category,
+    subcategory: req.subcategory,
+    status: req.status,
+    pipelineStage: req.pipelineStage,
+    rawContent: req.rawContent || '',
+    createdAt: req.createdAt.toISOString(),
+    updatedAt: req.updatedAt.toISOString(),
+    messages: req.messages.map(msg => ({
+      direction: msg.direction as 'inbound' | 'outbound',
+      content: msg.content,
+      timestamp: msg.createdAt.toISOString(),
+    })),
+    client: req.client,
+  }))
 
   const context: RequestAnalysisContext = {
     id: request.id,
