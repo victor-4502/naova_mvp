@@ -79,6 +79,15 @@ export default function AdminRequestsPage() {
   const [updatingAutoReply, setUpdatingAutoReply] = useState<Record<string, boolean>>({})
   const [suggestedMessages, setSuggestedMessages] = useState<Record<string, string>>({})
   const [generatingMessages, setGeneratingMessages] = useState<Record<string, boolean>>({})
+  
+  // Toggle global para enviar mensajes automáticamente
+  const [globalAutoSend, setGlobalAutoSend] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('naova_global_auto_send')
+      return saved === 'true'
+    }
+    return false
+  })
 
   const loadRequests = async () => {
     setLoading(true)
@@ -114,6 +123,52 @@ export default function AdminRequestsPage() {
   useEffect(() => {
     loadRequests()
   }, [sortBy])
+
+  // Cargar preferencia desde el backend al inicio
+  useEffect(() => {
+    fetch('/api/admin/settings/auto-send', {
+      credentials: 'include',
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.enabled === 'boolean') {
+          setGlobalAutoSend(data.enabled)
+          // También guardar en localStorage para persistencia en frontend
+          localStorage.setItem('naova_global_auto_send', String(data.enabled))
+        }
+      })
+      .catch(err => {
+        console.warn('No se pudo cargar preferencia del backend, usando localStorage:', err)
+        // Fallback a localStorage
+        const saved = localStorage.getItem('naova_global_auto_send')
+        if (saved !== null) {
+          setGlobalAutoSend(saved === 'true')
+        }
+      })
+  }, [])
+
+  // Guardar preferencia de envío automático global en el backend
+  useEffect(() => {
+    // Guardar en localStorage para persistencia en frontend
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('naova_global_auto_send', String(globalAutoSend))
+      
+      // Actualizar la preferencia en el backend
+      fetch('/api/admin/settings/auto-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ enabled: globalAutoSend }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log('[Settings] Preferencia de envío automático guardada:', globalAutoSend)
+          }
+        })
+        .catch(err => console.warn('No se pudo guardar preferencia en backend:', err))
+    }
+  }, [globalAutoSend])
 
   const handleToggleAutoReply = async (request: Request, enabled: boolean) => {
     setUpdatingAutoReply((prev) => ({ ...prev, [request.id]: true }))
@@ -206,6 +261,28 @@ export default function AdminRequestsPage() {
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Filtros y Ordenamiento */}
         <div className="mb-6 space-y-4">
+          {/* Toggle global de envío automático */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <label className="inline-flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                checked={globalAutoSend}
+                onChange={(e) => setGlobalAutoSend(e.target.checked)}
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-900">
+                  Enviar mensajes automáticamente
+                </span>
+                <span className="text-xs text-gray-500">
+                  {globalAutoSend 
+                    ? 'Los mensajes se enviarán automáticamente cuando se generen' 
+                    : 'Los mensajes se guardarán como borradores, listos para revisar y enviar'}
+                </span>
+              </div>
+            </label>
+          </div>
+
           {/* Filtro por canal */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-gray-600">
@@ -478,18 +555,6 @@ export default function AdminRequestsPage() {
                         <span className="text-xs font-semibold text-gray-700">
                           Mensaje sugerido para pedir información faltante
                         </span>
-                        <label className="inline-flex items-center gap-2 text-xs text-gray-700">
-                          <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                            checked={!!autoReplyState[req.id]}
-                            disabled={!!updatingAutoReply[req.id]}
-                            onChange={(e) => handleToggleAutoReply(req, e.target.checked)}
-                          />
-                          <span>
-                            Activar respuesta automática por el mismo canal
-                          </span>
-                        </label>
                       </div>
 
                       <div className="bg-gray-50 border border-gray-200 rounded-md p-3">

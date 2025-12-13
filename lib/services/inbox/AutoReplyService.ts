@@ -3,6 +3,7 @@ import { findCategoryRule, type FieldId } from '@/lib/rules/requestSchemas'
 import { generateFollowUpMessage } from './FollowUpGenerator'
 import { WhatsAppService } from '@/lib/services/whatsapp/WhatsAppService'
 import { EmailService } from '@/lib/services/email/EmailService'
+import { isGlobalAutoSendEnabled } from '@/lib/utils/autoSendConfig'
 
 export class AutoReplyService {
   /**
@@ -161,7 +162,6 @@ export class AutoReplyService {
       : null
 
     // Registrar mensaje outbound asociado al request
-    // NO se envía automáticamente - se debe activar desde el panel con el toggle
     const newMessage = await prisma.message.create({
       data: {
         requestId: request.id,
@@ -171,13 +171,74 @@ export class AutoReplyService {
         from: fromContact,
         to: toContact || 'pendiente', // Usar 'pendiente' si no hay contacto (campo NOT NULL)
         subject: originalSubject || null,
-        processed: false, // Queda pendiente de envío - se envía solo si auto-reply está activado
+        processed: false, // Por defecto pendiente, se actualizará si se envía
       },
     })
 
-    console.log('[AutoReply] Mensaje generado y guardado (pendiente de envío). ID:', newMessage.id)
-    if (!toContact) {
-      console.warn('[AutoReply] No se pudo determinar el contacto. El mensaje quedó guardado pero requiere contacto para enviarse.')
+    console.log('[AutoReply] Mensaje generado y guardado. ID:', newMessage.id)
+
+    // Si el envío automático global está habilitado Y tenemos contacto, enviar automáticamente
+    const shouldAutoSend = isGlobalAutoSendEnabled()
+    
+    if (shouldAutoSend && toContact) {
+      try {
+        console.log('[AutoReply] Envío automático habilitado, enviando mensaje...')
+        
+        if (channel === 'whatsapp') {
+          const result = await WhatsAppService.sendMessageWithFallback(
+            toContact,
+            text,
+            'hello_world'
+          )
+
+          if (result.success && result.messageId) {
+            await prisma.message.update({
+              where: { id: newMessage.id },
+              data: {
+                processed: true,
+                processedAt: new Date(),
+                sourceId: result.messageId,
+                to: toContact,
+              },
+            })
+            console.log('[AutoReply] Mensaje de WhatsApp enviado automáticamente:', result.messageId)
+          } else {
+            console.warn('[AutoReply] Error al enviar mensaje de WhatsApp:', result.error)
+          }
+        } else if (channel === 'email') {
+          const result = await EmailService.sendReply(
+            toContact,
+            originalSubject || `Requerimiento ${request.id}`,
+            text,
+            originalMessage?.sourceId || undefined
+          )
+
+          if (result.success && result.messageId) {
+            await prisma.message.update({
+              where: { id: newMessage.id },
+              data: {
+                processed: true,
+                processedAt: new Date(),
+                sourceId: result.messageId,
+                to: toContact,
+                subject: originalSubject,
+              },
+            })
+            console.log('[AutoReply] Mensaje de Email enviado automáticamente:', result.messageId)
+          } else {
+            console.warn('[AutoReply] Error al enviar mensaje de Email:', result.error)
+          }
+        }
+      } catch (error) {
+        console.error('[AutoReply] Error inesperado al enviar mensaje automáticamente:', error)
+        // El mensaje queda como processed: false para que se pueda enviar manualmente después
+      }
+    } else {
+      if (!toContact) {
+        console.warn('[AutoReply] No se pudo determinar el contacto. El mensaje quedó guardado pero requiere contacto para enviarse.')
+      } else {
+        console.log('[AutoReply] Envío automático deshabilitado. Mensaje guardado como borrador (processed: false)')
+      }
     }
   }
 }

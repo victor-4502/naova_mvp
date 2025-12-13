@@ -7,6 +7,7 @@ import type { RequestSource, RequestStatus, PipelineStage } from '@/lib/types/re
 import { REQUEST_STATUSES, PIPELINE_STAGES } from '@/lib/utils/constants'
 import { RequestRuleEngine } from './RequestRuleEngine'
 import { AutoReplyService } from './AutoReplyService'
+import { CompletionMessageService } from './CompletionMessageService'
 
 export interface CreateRequestInput {
   source: RequestSource
@@ -174,6 +175,19 @@ export class InboxService {
       data: requestData,
       include: includeOptions,
     })
+
+    // Si el request está completo desde el inicio, generar mensaje de confirmación
+    if (status === REQUEST_STATUSES.READY_FOR_SUPPLIER_MATCHING) {
+      try {
+        await CompletionMessageService.maybeSendCompletionMessage(
+          request.id,
+          '', // No hay estado anterior
+          status
+        )
+      } catch (error) {
+        console.warn('[InboxService] Error al generar mensaje de confirmación inicial:', error)
+      }
+    }
 
     // Intentar generar una respuesta automática si el request quedó incompleto
     try {
@@ -439,6 +453,9 @@ export class InboxService {
       ruleAnalysis // Pasar el análisis completo para verificar campos faltantes
     )
 
+    // Guardar el estado anterior para detectar cambios
+    const previousStatus = existingRequest.status
+
     // Actualizar el request con el nuevo análisis
     const updatedRequest = await prisma.request.update({
       where: { id: requestId },
@@ -464,6 +481,19 @@ export class InboxService {
         } as any,
       },
     })
+
+    // Si cambió de INCOMPLETE a READY_FOR_SUPPLIER_MATCHING, generar mensaje de confirmación
+    if (previousStatus !== status) {
+      try {
+        await CompletionMessageService.maybeSendCompletionMessage(
+          requestId,
+          previousStatus,
+          status
+        )
+      } catch (error) {
+        console.warn('[InboxService] Error al generar mensaje de confirmación:', error)
+      }
+    }
 
     // Si aún faltan campos, generar nuevo mensaje automático
     try {
