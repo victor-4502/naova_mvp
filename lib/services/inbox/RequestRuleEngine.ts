@@ -58,30 +58,72 @@ export class RequestRuleEngine {
 
     const presentFields: FieldId[] = []
 
-    // Heurísticas simples para marcar campos presentes usando ExtractedContent
-    // (En el futuro se puede enriquecer con normalizedContent / IA externa)
+    // Normalizar contenido para búsqueda
+    const normalizedContent = rawContent ? rawContent.toLowerCase() : ''
+    const contentText = normalizedContent || extracted.keywords.join(' ').toLowerCase()
+
+    // Heurísticas simples para marcar campos presentes usando ExtractedContent y rawContent
     const firstItem = extracted.items[0]
 
     // quantity
     const hasQuantity =
       extracted.quantities.length > 0 ||
       (firstItem && typeof firstItem.quantity === 'number' && firstItem.quantity > 0)
+    if (hasQuantity) presentFields.push('quantity')
 
     // unit
     const hasUnit =
       extracted.units.length > 0 ||
       (firstItem && typeof firstItem.unit === 'string' && firstItem.unit.trim().length > 0)
-
-    if (hasQuantity) presentFields.push('quantity')
     if (hasUnit) presentFields.push('unit')
 
-    // deliveryLocation / deliveryDate:
-    // de momento no tenemos un parser dedicado aquí, dejamos que IA externa
-    // o lógica futura los marque; por ahora asumimos que faltan.
+    // equipmentType: buscar nombres de equipos o sistemas en el contenido
+    // Palabras clave comunes: inyección, compresor, montacargas, máquina, equipo, sistema, línea
+    const equipmentKeywords = [
+      'equipo', 'maquina', 'máquina', 'sistema', 'línea', 'linea',
+      'compresor', 'montacargas', 'inyección', 'inyeccion', 'plastico', 'plástico',
+      'empaque', 'producción', 'produccion', 'maquinaria', 'motor', 'generador',
+      'refrigeración', 'refrigeracion', 'aire acondicionado', 'caldera', 'turbina'
+    ]
+    const hasEquipmentType = equipmentKeywords.some(kw => contentText.includes(kw)) ||
+                            (firstItem && firstItem.name && firstItem.name.trim().length > 0)
+    if (hasEquipmentType) presentFields.push('equipmentType')
 
-    // Campos opcionales brand / model / serviceScope / equipmentType
-    // también se considerarán ausentes por defecto, pero como no son requeridos
-    // no penalizan la completitud.
+    // serviceScope: buscar palabras relacionadas con tipo de servicio
+    // Palabras clave: preventivo, correctivo, reparación, revisión, mantenimiento, diagnóstico, instalación
+    const serviceScopeKeywords = [
+      'preventivo', 'correctivo', 'reparación', 'reparacion', 'revisión', 'revision',
+      'diagnóstico', 'diagnostico', 'instalación', 'instalacion', 'calibración', 'calibracion',
+      'inspección', 'inspeccion', 'limpieza', 'ajuste', 'optimización', 'optimizacion'
+    ]
+    const hasServiceScope = serviceScopeKeywords.some(kw => contentText.includes(kw))
+    if (hasServiceScope) presentFields.push('serviceScope')
+
+    // deliveryLocation: buscar ubicaciones comunes en México o palabras relacionadas
+    // Palabras clave: monterrey, guadalajara, cdmx, planta, sucursal, nave, ubicación, ubicacion, dirección, direccion
+    const locationKeywords = [
+      'monterrey', 'guadalajara', 'cdmx', 'ciudad de méxico', 'ciudad de mexico',
+      'planta', 'sucursal', 'nave', 'ubicación', 'ubicacion', 'dirección', 'direccion',
+      'parque industrial', 'colonia', 'calle', 'avenida', 'avenue', 'león', 'leon',
+      'puebla', 'querétaro', 'queretaro', 'toluca', 'tijuana', 'mérida', 'merida'
+    ]
+    const hasDeliveryLocation = locationKeywords.some(kw => contentText.includes(kw))
+    if (hasDeliveryLocation) presentFields.push('deliveryLocation')
+
+    // deliveryDate: buscar palabras relacionadas con fechas o tiempo
+    const dateKeywords = [
+      'semana', 'mes', 'días', 'dias', 'fecha', 'límite', 'limite', 'antes', 'urgente',
+      'inmediato', 'pronto', 'cuando', 'disponible', 'ventana', 'periodo', 'período'
+    ]
+    const hasDeliveryDate = dateKeywords.some(kw => contentText.includes(kw))
+    if (hasDeliveryDate) presentFields.push('deliveryDate')
+
+    // brand y model: buscar en items extraídos
+    // Estos son opcionales, pero los detectamos si están presentes
+    if (firstItem && firstItem.name && firstItem.name.length > 3) {
+      // Si el item tiene un nombre descriptivo, podría ser brand/model
+      // Por ahora no los marcamos como presentes a menos que haya una heurística más específica
+    }
 
     const requiredFieldIds = categoryRule.fields.filter((f) => f.required).map((f) => f.id)
 
