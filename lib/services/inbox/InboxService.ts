@@ -443,7 +443,20 @@ export class InboxService {
       existingRequest.source as RequestSource,
       input.metadata
     )
-    const ruleAnalysis = RequestRuleEngine.analyze(extracted, classification, fullContent)
+    
+    // Preparar historial de conversación para IA
+    const conversationHistory = allMessages.map((msg) => ({
+      direction: msg.direction as 'inbound' | 'outbound',
+      content: msg.content,
+      timestamp: msg.createdAt.toISOString(),
+    }))
+    
+    const ruleAnalysis = await RequestRuleEngine.analyze(
+      extracted,
+      classification,
+      fullContent,
+      conversationHistory // Pasar historial completo para mejor análisis con IA
+    )
 
     // Determinar nuevo estado basado en el análisis actualizado
     const { status, pipelineStage } = this.determineInitialStatus(
