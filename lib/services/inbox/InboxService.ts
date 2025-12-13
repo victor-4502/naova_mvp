@@ -438,11 +438,27 @@ export class InboxService {
 
     // Re-analizar el contenido completo
     const extracted = ContentExtractor.extract(fullContent)
-    const classification = ClassificationService.classify(
+    let classification = ClassificationService.classify(
       fullContent,
       existingRequest.source as RequestSource,
       input.metadata
     )
+    
+    // IMPORTANTE: Preservar categoría existente si hay contexto claro de servicio
+    // Si el request original era "servicios" y el nuevo contenido menciona "mantenimiento",
+    // mantener "servicios" aunque aparezcan keywords de otras categorías (como "máquina")
+    if (existingRequest.category === 'servicios' && 
+        (fullContent.toLowerCase().includes('mantenimiento') || 
+         fullContent.toLowerCase().includes('servicio') ||
+         allMessages.some(m => m.content.toLowerCase().includes('mantenimiento')))) {
+      // Hay contexto claro de servicio - preservar la categoría
+      classification = {
+        ...classification,
+        category: 'servicios', // Forzar categoría servicios
+        confidence: Math.max(classification.confidence, 0.8), // Alta confianza
+      }
+      console.log('[InboxService] Preservando categoría "servicios" debido a contexto de mantenimiento')
+    }
     
     // Preparar historial de conversación para IA
     const conversationHistory = allMessages.map((msg) => ({
@@ -451,6 +467,8 @@ export class InboxService {
       timestamp: msg.createdAt.toISOString(),
     }))
     
+    // Usar la clasificación (ya con categoría preservada si aplica)
+    // RequestRuleEngine usará classification.category como primera opción
     const ruleAnalysis = await RequestRuleEngine.analyze(
       extracted,
       classification,
@@ -470,6 +488,12 @@ export class InboxService {
     const previousStatus = existingRequest.status
 
     // Actualizar el request con el nuevo análisis
+    // Preservar categoría existente si la nueva clasificación no es más confiable
+    const finalCategory = classification.category && classification.confidence > 0.7
+      ? classification.category
+      : existingRequest.category || classification.category
+    const finalSubcategory = classification.subcategory || existingRequest.subcategory
+    
     const updatedRequest = await prisma.request.update({
       where: { id: requestId },
       data: {
@@ -477,8 +501,8 @@ export class InboxService {
         rawContent: fullContent, // Actualizar con contenido completo
         status,
         pipelineStage,
-        category: classification.category || existingRequest.category || undefined,
-        subcategory: classification.subcategory || existingRequest.subcategory || undefined,
+        category: finalCategory || undefined,
+        subcategory: finalSubcategory || undefined,
         urgency: classification.urgency || existingRequest.urgency,
         normalizedContent: {
           extracted,
