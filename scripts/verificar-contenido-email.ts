@@ -4,20 +4,47 @@
 
 import { prisma } from '../lib/prisma'
 
-const REQUEST_ID = process.argv[2] || 'cmj0r636q00007ufewmtd61gr' // El último request creado según los logs
+const REQUEST_ID = process.argv[2] // Si no se proporciona, buscará el más reciente de email
 
 async function verificarContenido() {
-  console.log('🔍 Verificando contenido del request:', REQUEST_ID, '\n')
-
+  let request
+  
   try {
-    const request = await prisma.request.findUnique({
-      where: { id: REQUEST_ID },
-      include: {
-        messages: {
-          orderBy: { createdAt: 'desc' },
+    if (REQUEST_ID) {
+      console.log('🔍 Verificando contenido del request:', REQUEST_ID, '\n')
+      request = await prisma.request.findUnique({
+        where: { id: REQUEST_ID },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'desc' },
+          },
         },
-      },
-    })
+      })
+    } else {
+      console.log('🔍 Buscando el request de email más reciente...\n')
+      const requests = await prisma.request.findMany({
+        where: {
+          source: 'email',
+        },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 1,
+      })
+      
+      if (requests.length === 0) {
+        console.error('❌ No se encontraron requests de email')
+        return
+      }
+      
+      request = requests[0]
+      console.log('✅ Request de email más reciente encontrado:', request.id, '\n')
+    }
 
     if (!request) {
       console.error('❌ Request no encontrado')

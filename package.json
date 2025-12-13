@@ -20,7 +20,8 @@
     "test:whatsapp": "tsx scripts/test-whatsapp.ts",
     "test:endpoint:email": "tsx scripts/probar-endpoint-email.ts",
     "diagnosticar:request": "tsx scripts/diagnosticar-request.ts",
-    "verificar:email": "tsx scripts/verificar-contenido-email.ts"
+    "verificar:email": "tsx scripts/verificar-contenido-email.ts",
+    "limpiar:requests": "tsx scripts/limpiar-requests-prueba.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",

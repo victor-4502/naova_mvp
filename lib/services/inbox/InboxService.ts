@@ -96,7 +96,8 @@ export class InboxService {
     const { status, pipelineStage } = this.determineInitialStatus(
       extracted,
       classification,
-      ruleAnalysis.completeness
+      ruleAnalysis.completeness,
+      ruleAnalysis // Pasar el análisis completo para verificar campos faltantes
     )
     
     // Crear request en la base de datos
@@ -190,22 +191,39 @@ export class InboxService {
   private static determineInitialStatus(
     extracted: ExtractedContent,
     classification: ClassificationResult,
-    rulesCompleteness: number
+    rulesCompleteness: number,
+    ruleAnalysis?: { missingFields: any[]; categoryRule: any } // Agregar análisis de reglas
   ): { status: RequestStatus; pipelineStage: PipelineStage } {
-    // Si no hay información suficiente, marcar como incompleto
+    // Si tenemos reglas aplicables, usar la lógica de reglas
+    if (ruleAnalysis?.categoryRule) {
+      const hasMissingRequiredFields = ruleAnalysis.missingFields.length > 0
+      
+      // Si faltan campos requeridos, está incompleto (sin importar el porcentaje)
+      if (hasMissingRequiredFields) {
+        return {
+          status: REQUEST_STATUSES.INCOMPLETE_INFORMATION,
+          pipelineStage: PIPELINE_STAGES.NEEDS_INFO,
+        }
+      }
+      
+      // Si no faltan campos requeridos, está completo
+      // (pero aún validamos que tenga al menos 80% de completitud para seguridad)
+      if (rulesCompleteness >= 0.8) {
+        return {
+          status: REQUEST_STATUSES.READY_FOR_SUPPLIER_MATCHING,
+          pipelineStage: PIPELINE_STAGES.FINDING_SUPPLIERS,
+        }
+      }
+    }
+
+    // Fallback si no hay reglas aplicables
     const hasCategory = !!classification.category
     const hasItems = extracted.items.length > 0
     const hasQuantities = extracted.quantities.length > 0
-
-    // Usar reglas si tenemos completitud calculada (>0 indica que había alguna regla aplicable)
-    let isComplete: boolean
-    if (rulesCompleteness > 0) {
-      // Por ahora consideramos "suficientemente completo" si tiene al menos 80% de campos requeridos
-      isComplete = rulesCompleteness >= 0.8
-    } else {
-      // Fallback simple anterior
-      isComplete = hasCategory && (hasItems || hasQuantities)
-    }
+    
+    // Solo considerar completo si tiene categoría Y tiene items/cantidades
+    // Pero aún así, si hay reglas y faltan campos, NO está completo
+    const isComplete = hasCategory && (hasItems || hasQuantities)
 
     if (!isComplete) {
       return {
@@ -315,6 +333,7 @@ export class InboxService {
 
   /**
    * Agrega un mensaje entrante a un request existente
+   * Re-analiza el request completo y genera nuevo mensaje automático si faltan campos
    */
   static async addMessageToRequest(
     requestId: string,
@@ -338,6 +357,20 @@ export class InboxService {
       }>
     }
   ) {
+    // Obtener el request existente con todos sus mensajes
+    const existingRequest = await prisma.request.findUnique({
+      where: { id: requestId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    })
+
+    if (!existingRequest) {
+      throw new Error('Request no encontrado')
+    }
+
     // Crear el mensaje asociado al request existente
     const message = await prisma.message.create({
       data: {
@@ -371,14 +404,78 @@ export class InboxService {
       },
     })
 
-    // Actualizar el rawContent del request con el nuevo contenido
-    // (opcional: podemos mantener solo el primero o concatenar)
-    await prisma.request.update({
+    // Reconstruir el contenido completo concatenando todos los mensajes inbound
+    const allMessages = [...existingRequest.messages, message].filter(m => m.direction === 'inbound')
+    const fullContent = allMessages
+      .map(m => {
+        // Para emails, incluir subject si existe
+        if (m.subject && m.source === 'email') {
+          return `${m.subject}\n\n${m.content}`
+        }
+        return m.content
+      })
+      .join('\n\n')
+
+    console.log('[InboxService] Re-analizando request con nuevo mensaje:', {
+      requestId,
+      totalMessages: allMessages.length,
+      contentLength: fullContent.length,
+    })
+
+    // Re-analizar el contenido completo
+    const extracted = ContentExtractor.extract(fullContent)
+    const classification = ClassificationService.classify(
+      fullContent,
+      existingRequest.source as RequestSource,
+      input.metadata
+    )
+    const ruleAnalysis = RequestRuleEngine.analyze(extracted, classification, fullContent)
+
+    // Determinar nuevo estado basado en el análisis actualizado
+    const { status, pipelineStage } = this.determineInitialStatus(
+      extracted,
+      classification,
+      ruleAnalysis.completeness,
+      ruleAnalysis // Pasar el análisis completo para verificar campos faltantes
+    )
+
+    // Actualizar el request con el nuevo análisis
+    const updatedRequest = await prisma.request.update({
       where: { id: requestId },
       data: {
         updatedAt: new Date(),
+        rawContent: fullContent, // Actualizar con contenido completo
+        status,
+        pipelineStage,
+        category: classification.category || existingRequest.category || undefined,
+        subcategory: classification.subcategory || existingRequest.subcategory || undefined,
+        urgency: classification.urgency || existingRequest.urgency,
+        normalizedContent: {
+          extracted,
+          classification,
+          rules: {
+            categoryRuleId: ruleAnalysis.categoryRule?.id || null,
+            presentFields: ruleAnalysis.presentFields,
+            missingFields: ruleAnalysis.missingFields,
+            completeness: ruleAnalysis.completeness,
+            // Mantener el estado de autoReplyEnabled existente
+            autoReplyEnabled: (existingRequest.normalizedContent as any)?.rules?.autoReplyEnabled !== false,
+          },
+        } as any,
       },
     })
+
+    // Si aún faltan campos, generar nuevo mensaje automático
+    try {
+      console.log('[InboxService] Verificando si generar nuevo mensaje automático:', {
+        missingFields: ruleAnalysis.missingFields.length,
+        completeness: ruleAnalysis.completeness,
+      })
+      
+      await AutoReplyService.maybeSendAutoReply(updatedRequest)
+    } catch (error) {
+      console.warn('[InboxService] No se pudo generar respuesta automática para el request actualizado:', error)
+    }
 
     return message
   }

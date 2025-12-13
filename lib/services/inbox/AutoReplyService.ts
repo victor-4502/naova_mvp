@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { findCategoryRule, type FieldId } from '@/lib/rules/requestSchemas'
 import { generateFollowUpMessage } from './FollowUpGenerator'
+import { WhatsAppService } from '@/lib/services/whatsapp/WhatsAppService'
+import { EmailService } from '@/lib/services/email/EmailService'
 
 export class AutoReplyService {
   /**
@@ -54,7 +56,7 @@ export class AutoReplyService {
       return
     }
 
-    // Obtener información adicional del request para contexto de IA
+    // Obtener información adicional del request para contexto de IA y envío
     const requestWithDetails = await prisma.request.findUnique({
       where: { id: request.id },
       include: {
@@ -62,6 +64,8 @@ export class AutoReplyService {
           select: {
             name: true,
             company: true,
+            email: true,
+            phone: true,
           },
         },
         messages: {
@@ -71,6 +75,10 @@ export class AutoReplyService {
             direction: true,
             content: true,
             createdAt: true,
+            from: true,
+            to: true,
+            subject: true,
+            sourceId: true,
           },
         },
       },
@@ -112,19 +120,65 @@ export class AutoReplyService {
       return
     }
 
-    // Registrar mensaje outbound asociado al request.
-    // En el futuro, un worker puede tomar estos mensajes y
-    // enviarlos por WhatsApp/email/plataforma según el source.
-    await prisma.message.create({
+    // Determinar el contacto del cliente para enviar el mensaje
+    let toContact: string | null = null
+    const messageWithFrom = requestWithDetails?.messages.find(msg => msg.from)
+    
+    if (channel === 'whatsapp') {
+      // Para WhatsApp, obtener el número del mensaje original
+      if (messageWithFrom?.from) {
+        toContact = messageWithFrom.from
+      } else if (requestWithDetails?.client?.phone) {
+        toContact = requestWithDetails.client.phone
+      }
+    } else if (channel === 'email') {
+      // Para email, obtener del mensaje o del cliente
+      if (messageWithFrom?.from) {
+        toContact = messageWithFrom.from
+      } else if (requestWithDetails?.client?.email) {
+        toContact = requestWithDetails.client.email
+      }
+    }
+
+    // Si no hay contacto, no podemos enviar el mensaje
+    if (!toContact) {
+      console.warn('[AutoReply] No se pudo determinar el contacto para enviar auto-respuesta', {
+        requestId: request.id,
+        source: request.source,
+        hasClient: !!requestWithDetails?.client,
+        messagesCount: requestWithDetails?.messages.length || 0,
+      })
+      // Aún así, guardamos el mensaje para que pueda enviarse manualmente después
+    }
+
+    // Obtener el "from" (remitente) - usar un valor por defecto para auto-respuestas
+    const fromContact = 'Sistema Naova'
+
+    // Guardar información del email original para threading (si aplica)
+    const originalMessage = requestWithDetails?.messages.find(m => m.direction === 'inbound')
+    const originalSubject = channel === 'email' 
+      ? (originalMessage?.subject || `Requerimiento ${request.id}`)
+      : null
+
+    // Registrar mensaje outbound asociado al request
+    // NO se envía automáticamente - se debe activar desde el panel con el toggle
+    const newMessage = await prisma.message.create({
       data: {
         requestId: request.id,
         source: request.source,
         direction: 'outbound',
         content: text,
-        // TODO: Rellenar from/to según el canal y metadata cuando se integre con proveedores reales
-        processed: false,
+        from: fromContact,
+        to: toContact || 'pendiente', // Usar 'pendiente' si no hay contacto (campo NOT NULL)
+        subject: originalSubject || null,
+        processed: false, // Queda pendiente de envío - se envía solo si auto-reply está activado
       },
     })
+
+    console.log('[AutoReply] Mensaje generado y guardado (pendiente de envío). ID:', newMessage.id)
+    if (!toContact) {
+      console.warn('[AutoReply] No se pudo determinar el contacto. El mensaje quedó guardado pero requiere contacto para enviarse.')
+    }
   }
 }
 
