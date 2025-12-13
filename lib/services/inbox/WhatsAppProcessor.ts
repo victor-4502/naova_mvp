@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import type { RequestSource } from '@/lib/types/request'
 import { InboxService, type CreateRequestInput } from './InboxService'
+import { analyzeRequestContinuation, type RequestContext } from '@/lib/services/ai/RequestContinuationAnalyzer'
 
 export interface WhatsAppWebhookPayload {
   from: string
@@ -70,7 +71,8 @@ export class WhatsAppProcessor {
     
     // ANTES DE CREAR UN NUEVO REQUEST, verificar si hay un request activo/reciente
     // para este número de teléfono (continuación de conversación)
-    const activeRequest = await this.findActiveRequest(payload.from, clientId)
+    // Ahora con análisis de IA para determinar si es continuación o nuevo requerimiento
+    const activeRequest = await this.findActiveRequest(payload.from, clientId, content)
     
     if (activeRequest) {
       console.log(`[WhatsAppProcessor] Mensaje agregado a request existente: ${activeRequest.id}`)
@@ -163,15 +165,20 @@ export class WhatsAppProcessor {
 
   /**
    * Busca un request activo/reciente para un número de WhatsApp
+   * Ahora usa IA para determinar si el nuevo mensaje es continuación o un nuevo requerimiento
+   * 
    * Un request se considera "activo" si:
    * - Tiene el mismo número de teléfono en algún mensaje
    * - Es del mismo canal (whatsapp)
    * - No está cerrado, o fue cerrado recientemente (últimos 7 días)
    * - Tiene actividad reciente (últimos 7 días)
+   * 
+   * Y ahora también verifica con IA que el nuevo mensaje sea continuación del mismo tema
    */
   static async findActiveRequest(
     whatsappNumber: string,
-    clientId?: string
+    clientId?: string,
+    newMessageContent?: string // Contenido del nuevo mensaje para análisis con IA
   ): Promise<{ id: string } | null> {
     // Normalizar número
     const normalizedNumber = whatsappNumber.replace(/[\s\+\-\(\)]/g, '')
@@ -249,13 +256,7 @@ export class WhatsAppProcessor {
       where: whereClause,
       include: {
         messages: {
-          where: {
-            from: {
-              contains: normalizedNumber,
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
+          orderBy: { createdAt: 'asc' },
         },
       },
       orderBy: {
@@ -268,12 +269,49 @@ export class WhatsAppProcessor {
       const request = activeRequests[0]
       
       // Verificar que el mensaje es realmente del mismo número
-      const matchingMessage = request.messages[0]
-      if (matchingMessage?.from) {
-        const messageFrom = matchingMessage.from.replace(/[\s\+\-\(\)]/g, '')
-        // Comparar números (pueden tener diferentes formatos)
-        if (messageFrom.includes(normalizedNumber.slice(-10)) || normalizedNumber.includes(messageFrom.slice(-10))) {
-          console.log(`[WhatsAppProcessor] Request activo encontrado: ${request.id}`)
+      const matchingMessage = request.messages.find(m => 
+        m.direction === 'inbound' && 
+        m.from && 
+        m.from.replace(/[\s\+\-\(\)]/g, '').includes(normalizedNumber.slice(-10))
+      )
+      
+      if (matchingMessage) {
+        // Si tenemos contenido del nuevo mensaje, usar IA para determinar si es continuación
+        if (newMessageContent && newMessageContent.trim().length > 0) {
+          // Construir contexto del request para análisis de IA
+          const requestContext: RequestContext = {
+            id: request.id,
+            category: request.category,
+            subcategory: request.subcategory,
+            rawContent: request.rawContent || '',
+            messages: request.messages.map(msg => ({
+              direction: msg.direction as 'inbound' | 'outbound',
+              content: msg.content,
+              timestamp: msg.createdAt.toISOString(),
+            })),
+          }
+          
+          // Usar IA para analizar si es continuación
+          const analysis = await analyzeRequestContinuation(newMessageContent, requestContext)
+          
+          console.log('[WhatsAppProcessor] Análisis de continuación con IA:', {
+            requestId: request.id,
+            isContinuation: analysis.isContinuation,
+            confidence: analysis.confidence,
+            reason: analysis.reason,
+          })
+          
+          // Solo continuar si la IA dice que es continuación con confianza >= 0.6
+          if (analysis.isContinuation && analysis.confidence >= 0.6) {
+            console.log(`[WhatsAppProcessor] ✅ Request activo confirmado por IA: ${request.id}`)
+            return { id: request.id }
+          } else {
+            console.log(`[WhatsAppProcessor] ❌ IA determinó que es nuevo requerimiento. Creando nuevo request.`)
+            return null
+          }
+        } else {
+          // Si no hay contenido del nuevo mensaje, usar lógica original
+          console.log(`[WhatsAppProcessor] Request activo encontrado (sin análisis IA): ${request.id}`)
           return { id: request.id }
         }
       }
@@ -347,7 +385,56 @@ export class WhatsAppProcessor {
 
       if (requestsByPhone.length > 0) {
         const request = requestsByPhone[0]
-        console.log(`[WhatsAppProcessor] Request activo encontrado por número: ${request.id}`)
+        
+        // Si tenemos contenido del nuevo mensaje, usar IA para determinar si es continuación
+        if (newMessageContent && newMessageContent.trim().length > 0) {
+          // Obtener todos los mensajes del request para el contexto
+          const requestWithMessages = await prisma.request.findUnique({
+            where: { id: request.id },
+            include: {
+              messages: {
+                orderBy: { createdAt: 'asc' },
+              },
+            },
+          })
+          
+          if (requestWithMessages) {
+            // Construir contexto del request para análisis de IA
+            const requestContext: RequestContext = {
+              id: requestWithMessages.id,
+              category: requestWithMessages.category,
+              subcategory: requestWithMessages.subcategory,
+              rawContent: requestWithMessages.rawContent || '',
+              messages: requestWithMessages.messages.map(msg => ({
+                direction: msg.direction as 'inbound' | 'outbound',
+                content: msg.content,
+                timestamp: msg.createdAt.toISOString(),
+              })),
+            }
+            
+            // Usar IA para analizar si es continuación
+            const analysis = await analyzeRequestContinuation(newMessageContent, requestContext)
+            
+            console.log('[WhatsAppProcessor] Análisis de continuación con IA (por número):', {
+              requestId: request.id,
+              isContinuation: analysis.isContinuation,
+              confidence: analysis.confidence,
+              reason: analysis.reason,
+            })
+            
+            // Solo continuar si la IA dice que es continuación con confianza >= 0.6
+            if (analysis.isContinuation && analysis.confidence >= 0.6) {
+              console.log(`[WhatsAppProcessor] ✅ Request activo confirmado por IA (por número): ${request.id}`)
+              return { id: request.id }
+            } else {
+              console.log(`[WhatsAppProcessor] ❌ IA determinó que es nuevo requerimiento (por número). Creando nuevo request.`)
+              return null
+            }
+          }
+        }
+        
+        // Si no hay contenido del nuevo mensaje, usar lógica original
+        console.log(`[WhatsAppProcessor] Request activo encontrado por número (sin análisis IA): ${request.id}`)
         return { id: request.id }
       }
     }

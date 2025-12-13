@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import type { RequestSource } from '@/lib/types/request'
 import { InboxService, type CreateRequestInput } from './InboxService'
+import { analyzeRequestContinuation, type RequestContext } from '@/lib/services/ai/RequestContinuationAnalyzer'
 
 export interface EmailWebhookPayload {
   from: {
@@ -97,7 +98,8 @@ export class EmailProcessor {
     
     // ANTES DE CREAR UN NUEVO REQUEST, verificar si hay un request activo/reciente
     // para este email (continuación de conversación)
-    const activeRequest = await this.findActiveRequest(payload.from.email, clientId)
+    // Ahora con análisis de IA para determinar si es continuación o nuevo requerimiento
+    const activeRequest = await this.findActiveRequest(payload.from.email, clientId, messageContent)
     
     if (activeRequest) {
       console.log(`[EmailProcessor] Mensaje agregado a request existente: ${activeRequest.id}`)
@@ -197,15 +199,20 @@ export class EmailProcessor {
 
   /**
    * Busca un request activo/reciente para un email
+   * Ahora usa IA para determinar si el nuevo mensaje es continuación o un nuevo requerimiento
+   * 
    * Un request se considera "activo" si:
    * - Tiene el mismo email en algún mensaje
    * - Es del mismo canal (email)
    * - No está cerrado, o fue cerrado recientemente (últimos 7 días)
    * - Tiene actividad reciente (últimos 7 días)
+   * 
+   * Y ahora también verifica con IA que el nuevo mensaje sea continuación del mismo tema
    */
   static async findActiveRequest(
     email: string,
-    clientId?: string
+    clientId?: string,
+    newMessageContent?: string // Contenido del nuevo mensaje para análisis con IA
   ): Promise<{ id: string } | null> {
     // Normalizar email
     const normalizedEmail = email.toLowerCase().trim()
@@ -277,14 +284,7 @@ export class EmailProcessor {
       where: whereClause,
       include: {
         messages: {
-          where: {
-            from: {
-              equals: normalizedEmail,
-              mode: 'insensitive',
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
+          orderBy: { createdAt: 'asc' },
         },
       },
       orderBy: {
@@ -295,8 +295,45 @@ export class EmailProcessor {
 
     if (activeRequests.length > 0) {
       const request = activeRequests[0]
-      console.log(`[EmailProcessor] Request activo encontrado: ${request.id}`)
-      return { id: request.id }
+      
+      // Si tenemos contenido del nuevo mensaje, usar IA para determinar si es continuación
+      if (newMessageContent && newMessageContent.trim().length > 0) {
+        // Construir contexto del request para análisis de IA
+        const requestContext: RequestContext = {
+          id: request.id,
+          category: request.category,
+          subcategory: request.subcategory,
+          rawContent: request.rawContent || '',
+          messages: request.messages.map(msg => ({
+            direction: msg.direction as 'inbound' | 'outbound',
+            content: msg.content,
+            timestamp: msg.createdAt.toISOString(),
+          })),
+        }
+        
+        // Usar IA para analizar si es continuación
+        const analysis = await analyzeRequestContinuation(newMessageContent, requestContext)
+        
+        console.log('[EmailProcessor] Análisis de continuación con IA:', {
+          requestId: request.id,
+          isContinuation: analysis.isContinuation,
+          confidence: analysis.confidence,
+          reason: analysis.reason,
+        })
+        
+        // Solo continuar si la IA dice que es continuación con confianza >= 0.6
+        if (analysis.isContinuation && analysis.confidence >= 0.6) {
+          console.log(`[EmailProcessor] ✅ Request activo confirmado por IA: ${request.id}`)
+          return { id: request.id }
+        } else {
+          console.log(`[EmailProcessor] ❌ IA determinó que es nuevo requerimiento. Creando nuevo request.`)
+          return null
+        }
+      } else {
+        // Si no hay contenido del nuevo mensaje, usar lógica original
+        console.log(`[EmailProcessor] Request activo encontrado (sin análisis IA): ${request.id}`)
+        return { id: request.id }
+      }
     }
 
     // Si no encontramos por cliente, buscar solo por email
@@ -369,7 +406,56 @@ export class EmailProcessor {
 
       if (requestsByEmail.length > 0) {
         const request = requestsByEmail[0]
-        console.log(`[EmailProcessor] Request activo encontrado por email: ${request.id}`)
+        
+        // Si tenemos contenido del nuevo mensaje, usar IA para determinar si es continuación
+        if (newMessageContent && newMessageContent.trim().length > 0) {
+          // Obtener todos los mensajes del request para el contexto
+          const requestWithMessages = await prisma.request.findUnique({
+            where: { id: request.id },
+            include: {
+              messages: {
+                orderBy: { createdAt: 'asc' },
+              },
+            },
+          })
+          
+          if (requestWithMessages) {
+            // Construir contexto del request para análisis de IA
+            const requestContext: RequestContext = {
+              id: requestWithMessages.id,
+              category: requestWithMessages.category,
+              subcategory: requestWithMessages.subcategory,
+              rawContent: requestWithMessages.rawContent || '',
+              messages: requestWithMessages.messages.map(msg => ({
+                direction: msg.direction as 'inbound' | 'outbound',
+                content: msg.content,
+                timestamp: msg.createdAt.toISOString(),
+              })),
+            }
+            
+            // Usar IA para analizar si es continuación
+            const analysis = await analyzeRequestContinuation(newMessageContent, requestContext)
+            
+            console.log('[EmailProcessor] Análisis de continuación con IA (por email):', {
+              requestId: request.id,
+              isContinuation: analysis.isContinuation,
+              confidence: analysis.confidence,
+              reason: analysis.reason,
+            })
+            
+            // Solo continuar si la IA dice que es continuación con confianza >= 0.6
+            if (analysis.isContinuation && analysis.confidence >= 0.6) {
+              console.log(`[EmailProcessor] ✅ Request activo confirmado por IA (por email): ${request.id}`)
+              return { id: request.id }
+            } else {
+              console.log(`[EmailProcessor] ❌ IA determinó que es nuevo requerimiento (por email). Creando nuevo request.`)
+              return null
+            }
+          }
+        }
+        
+        // Si no hay contenido del nuevo mensaje, usar lógica original
+        console.log(`[EmailProcessor] Request activo encontrado por email (sin análisis IA): ${request.id}`)
         return { id: request.id }
       }
     }
