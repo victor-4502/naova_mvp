@@ -127,10 +127,15 @@ export class CompletionMessageService {
 
     // Guardar mensaje outbound
     const fromContact = 'Sistema Naova'
+    // Convertir RequestSource a MessageSource (file/api -> web)
+    const messageSource = request.source === 'file' || request.source === 'api' 
+      ? 'web' 
+      : request.source
+    
     const newMessage = await prisma.message.create({
       data: {
         requestId,
-        source: request.source,
+        source: messageSource,
         direction: 'outbound',
         content: messageText,
         from: fromContact,
