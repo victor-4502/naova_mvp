@@ -90,8 +90,8 @@ export class InboxService {
     )
 
     // Analizar reglas por categoría para determinar campos faltantes
-    // Pasar el contenido original para búsqueda directa de keywords si no se encuentra categoría
-    const ruleAnalysis = RequestRuleEngine.analyze(extracted, classification, contentForAnalysis)
+    // Pasar el contenido original para análisis (sin historial en este punto, es un request nuevo)
+    const ruleAnalysis = await RequestRuleEngine.analyze(extracted, classification, contentForAnalysis)
     
     // Determinar estado inicial
     const { status, pipelineStage } = this.determineInitialStatus(

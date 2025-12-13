@@ -6,6 +6,7 @@ import {
   REQUEST_CATEGORY_RULES,
   findCategoryRule,
 } from '@/lib/rules/requestSchemas'
+import { extractFieldsWithAI } from '@/lib/services/ai/AIContentExtractor'
 
 export interface RuleAnalysisResult {
   categoryRule: RequestCategoryRule | null
@@ -18,12 +19,18 @@ export class RequestRuleEngine {
   /**
    * Analiza el request usando las reglas por categoría para determinar
    * qué campos mínimos están presentes y cuáles faltan.
+   * Usa IA si está disponible, keywords como fallback.
    */
-  static analyze(
+  static async analyze(
     extracted: ExtractedContent,
     classification: ClassificationResult,
-    rawContent?: string, // Agregar contenido original para búsqueda directa
-  ): RuleAnalysisResult {
+    rawContent?: string, // Contenido original para análisis
+    conversationHistory?: Array<{ // Historial de conversación para contexto de IA
+      direction: 'inbound' | 'outbound'
+      content: string
+      timestamp: string
+    }>
+  ): Promise<RuleAnalysisResult> {
     // Intentar encontrar regla a partir de la categoría clasificada o extraída
     const categoryFromClassifier = classification.category || extracted.category
     let categoryRule = findCategoryRule(categoryFromClassifier)
@@ -56,6 +63,35 @@ export class RequestRuleEngine {
       }
     }
 
+    // Intentar usar IA para detectar campos presentes (si está disponible)
+    let presentFields: FieldId[] = []
+    let aiExtraction: Awaited<ReturnType<typeof extractFieldsWithAI>> | null = null
+
+    if (rawContent) {
+      try {
+        aiExtraction = await extractFieldsWithAI(rawContent, categoryRule, conversationHistory)
+        if (aiExtraction && aiExtraction.presentFields.length > 0) {
+          presentFields = aiExtraction.presentFields
+          console.log('[RequestRuleEngine] Campos detectados con IA:', presentFields)
+        }
+      } catch (error) {
+        console.warn('[RequestRuleEngine] Error en extracción con IA, usando fallback de keywords:', error)
+      }
+    }
+
+    // Si la IA no detectó campos o no está disponible, usar keywords como fallback
+    if (presentFields.length === 0) {
+      presentFields = this.detectFieldsWithKeywords(extracted, rawContent)
+      console.log('[RequestRuleEngine] Campos detectados con keywords (fallback):', presentFields)
+    }
+
+  /**
+   * Detecta campos presentes usando keywords (fallback cuando IA no está disponible)
+   */
+  private static detectFieldsWithKeywords(
+    extracted: ExtractedContent,
+    rawContent?: string
+  ): FieldId[] {
     const presentFields: FieldId[] = []
 
     // Normalizar contenido para búsqueda
@@ -78,7 +114,6 @@ export class RequestRuleEngine {
     if (hasUnit) presentFields.push('unit')
 
     // equipmentType: buscar nombres de equipos o sistemas en el contenido
-    // Palabras clave comunes: inyección, compresor, montacargas, máquina, equipo, sistema, línea
     const equipmentKeywords = [
       'equipo', 'maquina', 'máquina', 'sistema', 'línea', 'linea',
       'compresor', 'montacargas', 'inyección', 'inyeccion', 'plastico', 'plástico',
@@ -90,7 +125,6 @@ export class RequestRuleEngine {
     if (hasEquipmentType) presentFields.push('equipmentType')
 
     // serviceScope: buscar palabras relacionadas con tipo de servicio
-    // Palabras clave: preventivo, correctivo, reparación, revisión, mantenimiento, diagnóstico, instalación
     const serviceScopeKeywords = [
       'preventivo', 'correctivo', 'reparación', 'reparacion', 'revisión', 'revision',
       'diagnóstico', 'diagnostico', 'instalación', 'instalacion', 'calibración', 'calibracion',
@@ -99,8 +133,7 @@ export class RequestRuleEngine {
     const hasServiceScope = serviceScopeKeywords.some(kw => contentText.includes(kw))
     if (hasServiceScope) presentFields.push('serviceScope')
 
-    // deliveryLocation: buscar ubicaciones comunes en México o palabras relacionadas
-    // Palabras clave: monterrey, guadalajara, cdmx, planta, sucursal, nave, ubicación, ubicacion, dirección, direccion
+    // deliveryLocation: buscar ubicaciones comunes
     const locationKeywords = [
       'monterrey', 'guadalajara', 'cdmx', 'ciudad de méxico', 'ciudad de mexico',
       'planta', 'sucursal', 'nave', 'ubicación', 'ubicacion', 'dirección', 'direccion',
@@ -118,12 +151,7 @@ export class RequestRuleEngine {
     const hasDeliveryDate = dateKeywords.some(kw => contentText.includes(kw))
     if (hasDeliveryDate) presentFields.push('deliveryDate')
 
-    // brand y model: buscar en items extraídos
-    // Estos son opcionales, pero los detectamos si están presentes
-    if (firstItem && firstItem.name && firstItem.name.length > 3) {
-      // Si el item tiene un nombre descriptivo, podría ser brand/model
-      // Por ahora no los marcamos como presentes a menos que haya una heurística más específica
-    }
+    return presentFields
 
     const requiredFieldIds = categoryRule.fields.filter((f) => f.required).map((f) => f.id)
 
