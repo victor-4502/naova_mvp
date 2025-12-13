@@ -121,6 +121,36 @@ export default function RequestDetailPage() {
     }
   }, [requestId])
 
+  const handleSendPendingMessage = async (messageId: string) => {
+    setSendingMessages((prev) => ({ ...prev, [messageId]: true }))
+    try {
+      const response = await fetch(
+        `/api/admin/requests/${requestId}/messages/${messageId}/send`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      )
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al enviar mensaje')
+      }
+
+      // Recargar el request para actualizar el estado del mensaje
+      await loadRequest()
+    } catch (err) {
+      console.error('Error sending message:', err)
+      alert(`No se pudo enviar el mensaje. ${err instanceof Error ? err.message : ''}`)
+    } finally {
+      setSendingMessages((prev) => {
+        const newState = { ...prev }
+        delete newState[messageId]
+        return newState
+      })
+    }
+  }
+
   const handleSendReply = async () => {
     if (!replyContent.trim()) {
       alert('Por favor ingresa un mensaje')
