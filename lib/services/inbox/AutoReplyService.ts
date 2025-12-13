@@ -114,6 +114,12 @@ export class AutoReplyService {
       .map((fieldId) => categoryRule.fields.find((f) => f.id === fieldId))
       .filter((f) => !!f) as Array<{ id: string; label: string; description: string }>
 
+    // Contar cuántos mensajes automáticos (outbound) ya se han enviado
+    const previousAutoReplies = requestWithDetails?.messages.filter(
+      msg => msg.direction === 'outbound' && msg.from === 'Sistema Naova'
+    ) || []
+    const previousAutoReplyCount = previousAutoReplies.length
+
     const text = await generateFollowUpMessage({
       categoryRule,
       missingFields,
@@ -122,6 +128,7 @@ export class AutoReplyService {
       clientInfo,
       conversationHistory,
       channel,
+      previousAutoReplyCount, // Pasar el número de mensajes automáticos previos
     })
 
     if (!text) {

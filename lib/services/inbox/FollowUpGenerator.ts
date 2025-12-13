@@ -36,6 +36,10 @@ export interface FollowUpInput {
    * Canal de comunicación
    */
   channel?: 'whatsapp' | 'email' | 'web'
+  /**
+   * Número de mensajes automáticos ya enviados (para variar el tono)
+   */
+  previousAutoReplyCount?: number
 }
 
 /**
@@ -43,7 +47,7 @@ export interface FollowUpInput {
  * o plantilla predefinida como fallback
  */
 export async function generateFollowUpMessage(input: FollowUpInput): Promise<string | null> {
-  const { categoryRule, missingFields, presentFields, requestContent, clientInfo, conversationHistory, channel = 'web' } = input
+  const { categoryRule, missingFields, presentFields, requestContent, clientInfo, conversationHistory, channel = 'web', previousAutoReplyCount = 0 } = input
 
   if (!categoryRule || missingFields.length === 0) {
     // Nada que pedir
@@ -77,6 +81,7 @@ export async function generateFollowUpMessage(input: FollowUpInput): Promise<str
       clientInfo,
       conversationHistory,
       channel,
+      previousAutoReplyCount,
     }
 
     const aiMessage = await generateAIMessage(aiOptions)

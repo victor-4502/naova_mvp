@@ -65,6 +65,10 @@ export interface GenerateMessageOptions {
    * Canal de comunicación (whatsapp, email, etc.)
    */
   channel: 'whatsapp' | 'email' | 'web'
+  /**
+   * Número de mensajes automáticos ya enviados (para variar el tono)
+   */
+  previousAutoReplyCount?: number
 }
 
 /**
@@ -193,25 +197,42 @@ function buildPrompt(options: GenerateMessageOptions): string {
   // Canal de comunicación
   prompt += `CANAL: ${channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'Email' : 'Plataforma web'}\n\n`
 
-  // Instrucciones finales - MEJORADAS para que analice el historial
-  prompt += `INSTRUCCIONES PARA GENERAR EL MENSAJE:\n`
+  // Número de mensajes automáticos previos
+  prompt += `NÚMERO DE MENSAJES AUTOMÁTICOS YA ENVIADOS: ${previousAutoReplyCount}\n\n`
+
+  // Instrucciones finales - MEJORADAS para variar según el número de mensajes
+  prompt += `INSTRUCCIONES PARA GENERAR EL MENSAJE (MUY IMPORTANTE):\n`
   prompt += `1. Analiza el historial de conversación para identificar qué información el cliente YA proporcionó\n`
   prompt += `2. Solo menciona y solicita los campos que están en "INFORMACIÓN QUE TODAVÍA FALTA"\n`
   prompt += `3. NO vuelvas a pedir información que ya está en "INFORMACIÓN QUE EL CLIENTE YA PROPORCIONÓ"\n`
-  prompt += `4. Si el cliente ya mencionó algo en mensajes anteriores, haz referencia a eso de manera natural\n`
-  prompt += `5. Sé conciso: solo pide lo que realmente falta, sin repetir lo que ya sabes\n`
-  prompt += `6. Mantén un tono amigable y profesional, apropiado para ${channel}\n`
-  prompt += `7. Si hay múltiples campos faltantes, enuméralos de manera clara\n`
-  prompt += `8. Proporciona ejemplos solo cuando sean útiles\n\n`
+  prompt += `4. Sé conciso: solo pide lo que realmente falta\n`
+  prompt += `5. Mantén un tono MUY personal, humano y amigable - esto es clave para nuestra propuesta de valor\n`
+  prompt += `6. Variación según número de mensajes:\n`
+  prompt += `   - PRIMER mensaje (previousAutoReplyCount = 0): Puedes empezar con "¡Gracias por tu mensaje! Detecté que quieres hacer un requerimiento relacionado con ${category}..."\n`
+  prompt += `   - SEGUNDO mensaje (previousAutoReplyCount = 1): Usa variaciones como "Perfecto, ya tengo [información que ya tiene]. Nos sigue faltando...", "Excelente, ya tenemos [X]. Para continuar, necesito...", "Muy bien, ya tengo [X]. Solo me falta..."\n`
+  prompt += `   - TERCER mensaje o más (previousAutoReplyCount >= 2): Usa un tono más cercano como "Disculpa, pero aún nos falta...", "Para poder ayudarte mejor, todavía necesito...", "Gracias por la información. Me ayudarías mucho si me proporcionas..."\n`
+  prompt += `7. NO repitas la misma introducción "¡Gracias por tu mensaje! Detecté que quieres hacer un requerimiento relacionado con..." en mensajes subsecuentes\n`
+  prompt += `8. Haz referencia natural a lo que el cliente ya proporcionó antes de pedir lo que falta\n`
+  prompt += `9. Si hay múltiples campos faltantes, enuméralos de manera clara pero natural\n`
+  prompt += `10. Proporciona ejemplos solo cuando sean útiles y breves\n`
+  prompt += `11. El mensaje debe sonar como si lo escribiera una persona real, no un robot\n\n`
   
-  prompt += `EJEMPLO CORRECTO:\n`
-  prompt += `Si el cliente ya mencionó "máquina de inyección plásticos" y "mantenimiento correctivo", y solo falta la ubicación, di:\n`
-  prompt += `"Perfecto, ya tengo que necesitas mantenimiento correctivo para una máquina de inyección plásticos. Solo me falta saber dónde se encuentra el equipo (ubicación)."\n\n`
+  prompt += `EJEMPLOS DE MENSAJES:\n\n`
+  prompt += `PRIMER MENSAJE (previousAutoReplyCount = 0):\n`
+  prompt += `"¡Hola! Gracias por contactarnos. Veo que necesitas un servicio de ${category}. Para poder cotizarlo con nuestros proveedores, me ayudarías compartiendo:\n`
+  prompt += `- [campo que falta]\n`
+  prompt += `- [campo que falta]\n`
+  prompt += `Con esta información podremos ayudarte mejor."\n\n`
   
-  prompt += `EJEMPLO INCORRECTO:\n`
-  prompt += `NO repitas toda la lista completa de campos, solo menciona lo que falta.\n\n`
+  prompt += `SEGUNDO MENSAJE (previousAutoReplyCount = 1):\n`
+  prompt += `"Perfecto, ya tengo que necesitas [información que ya proporcionó]. Para continuar, solo me falta conocer:\n`
+  prompt += `- [campo que falta]\n`
+  prompt += `¡Gracias!"\n\n`
   
-  prompt += `IMPORTANTE: El mensaje debe ser natural, conversacional y profesional. Evita formato markdown excesivo.`
+  prompt += `TERCER MENSAJE O MÁS (previousAutoReplyCount >= 2):\n`
+  prompt += `"Disculpa, pero aún me falta conocer [campo que falta]. Con esa información podremos darte las mejores opciones de proveedores."\n\n`
+  
+  prompt += `IMPORTANTE: Sé natural, conversacional y humano. Evita sonar repetitivo o robótico. NO uses la misma introducción en todos los mensajes.`
 
   return prompt
 }
