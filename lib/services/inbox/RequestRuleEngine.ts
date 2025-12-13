@@ -85,6 +85,21 @@ export class RequestRuleEngine {
       console.log('[RequestRuleEngine] Campos detectados con keywords (fallback):', presentFields)
     }
 
+    const requiredFieldIds = categoryRule.fields.filter((f) => f.required).map((f) => f.id)
+
+    const missingFields = requiredFieldIds.filter((fieldId) => !presentFields.includes(fieldId))
+
+    const totalRequired = requiredFieldIds.length || 1
+    const completeness = (totalRequired - missingFields.length) / totalRequired
+
+    return {
+      categoryRule,
+      presentFields,
+      missingFields,
+      completeness,
+    }
+  }
+
   /**
    * Detecta campos presentes usando keywords (fallback cuando IA no está disponible)
    */
@@ -152,20 +167,6 @@ export class RequestRuleEngine {
     if (hasDeliveryDate) presentFields.push('deliveryDate')
 
     return presentFields
-
-    const requiredFieldIds = categoryRule.fields.filter((f) => f.required).map((f) => f.id)
-
-    const missingFields = requiredFieldIds.filter((fieldId) => !presentFields.includes(fieldId))
-
-    const totalRequired = requiredFieldIds.length || 1
-    const completeness = (totalRequired - missingFields.length) / totalRequired
-
-    return {
-      categoryRule,
-      presentFields,
-      missingFields,
-      completeness,
-    }
   }
 }
 
