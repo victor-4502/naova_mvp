@@ -63,7 +63,7 @@ export class CompletionMessageService {
     }
 
     // Verificar si auto-reply está habilitado
-    let normalized = request.normalizedContent
+    let normalized: any = request.normalizedContent
     if (typeof normalized === 'string') {
       try {
         normalized = JSON.parse(normalized)
