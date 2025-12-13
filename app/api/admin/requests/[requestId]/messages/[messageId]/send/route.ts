@@ -78,6 +78,14 @@ export async function POST(
       return NextResponse.json({ error: 'El mensaje ya fue enviado' }, { status: 400 })
     }
 
+    // Verificar que el request existe
+    if (!message.request) {
+      return NextResponse.json(
+        { error: 'Request asociado no encontrado' },
+        { status: 404 }
+      )
+    }
+
     // Obtener contacto del destinatario
     const toContact = message.to || message.request.messages[0]?.from || message.request.client?.email || message.request.client?.phone
 
