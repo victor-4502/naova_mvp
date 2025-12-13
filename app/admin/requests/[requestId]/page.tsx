@@ -91,6 +91,7 @@ export default function RequestDetailPage() {
   const [error, setError] = useState('')
   const [replying, setReplying] = useState(false)
   const [replyContent, setReplyContent] = useState('')
+  const [sendingMessages, setSendingMessages] = useState<Record<string, boolean>>({})
 
   const loadRequest = async () => {
     setLoading(true)
@@ -361,8 +362,29 @@ export default function RequestDetailPage() {
                       )}
                       <p className="text-sm whitespace-pre-line">{message.content}</p>
                       {!message.processed && isOutbound && (
-                        <div className="mt-2 text-xs opacity-75">
-                          ⏳ Pendiente de envío
+                        <div className="mt-2">
+                          <button
+                            onClick={() => handleSendPendingMessage(message.id)}
+                            disabled={sendingMessages[message.id]}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
+                          >
+                            {sendingMessages[message.id] ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Enviando...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-3 w-3" />
+                                Enviar
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                      {message.processed && message.processedAt && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          ✓ Enviado {new Date(message.processedAt).toLocaleString()}
                         </div>
                       )}
                     </div>
