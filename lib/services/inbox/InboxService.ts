@@ -520,6 +520,31 @@ export class InboxService {
       console.warn('[InboxService] No se pudo generar respuesta automática para el request actualizado:', error)
     }
 
+    // Analizar si el request debe cerrarse o eliminarse (usando IA)
+    // Solo genera sugerencias en segundo plano - NO aplica acciones automáticamente
+    try {
+      const { analyzeRequestOnly } = await import('@/lib/services/inbox/RequestManagementService')
+      analyzeRequestOnly(updatedRequest.id)
+        .then(analysis => {
+          console.log('[InboxService] 💡 Sugerencia de gestión del request (requiere revisión manual):', {
+            requestId: updatedRequest.id,
+            action: analysis.action,
+            confidence: analysis.confidence,
+            reason: analysis.reason,
+          })
+          // Loguear sugerencias importantes para que el admin las revise
+          if (analysis.confidence >= 0.7 && (analysis.action === 'close' || analysis.action === 'delete' || analysis.action === 'create_new')) {
+            console.log(`[InboxService] 💡 SUGERENCIA PARA REVISAR: ${analysis.action.toUpperCase()} para request ${updatedRequest.id}. Confianza: ${(analysis.confidence * 100).toFixed(0)}%. Razón: ${analysis.reason}`)
+          }
+        })
+        .catch(err => {
+          console.warn('[InboxService] Error en análisis de gestión (no crítico):', err)
+        })
+    } catch (error) {
+      // No es crítico si falla, solo loguear
+      console.warn('[InboxService] No se pudo iniciar análisis de gestión del request:', error)
+    }
+
     return message
   }
 }
